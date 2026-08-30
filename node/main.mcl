@@ -7,17 +7,24 @@ import "golang"
 import "sys"
 import "deploy"
 
+$seed_host = "mgmt.local"
+
+# Identify 'model name' line in /proc/cpuinfo
 $is_model_name = func($line) { strings.has_prefix($line, "model name") }
 
+# Grab the cpu model name from /proc/cpuinfo
 func cpu_info() {
 	gstr.trim_prefix(iter.filter(strings.split(os.readfile("/proc/cpuinfo"), "\n"), $is_model_name)[0], "model name\t: ")
 }
 
+# Grab the MemTotal value from /proc/meminfo
 func mem_info() {
 	gstr.trim_prefix(iter.filter(strings.split(os.readfile("/proc/meminfo"), "\n"), func($line) { strings.has_prefix($line, "MemTotal:") })[0], "MemTotal:       ")
 }
 
+# Report this node's hardware/asset inventory
 class register {
+	# smbios type 1 field has a machine uuid... might be useful at some point?
 	$uuid = os.readfile("/sys/devices/virtual/dmi/id/product_uuid")
 	$cpu = cpu_info()
 	$mem = mem_info()
@@ -37,6 +44,7 @@ class register {
 		value => $mem,
 	}
 
+	# os.release() reports on the os/distro/version
 	kv "os" {
 		mapped => true,
 		value => golang.template("{{ .Id }} {{ .Variant_id }} {{ .Version_id }}", os.release()),
@@ -53,6 +61,12 @@ class register {
 	#}
 }
 
+# A nexus is a service that shall run a central mgmt node with etcd.
+# This will be the system that leaf nodes seed from
+# It will also be the system that 'mgmt deploy lang ....' points at.
+#
+# This registers 'mgmt.local' in local mDNS for easy discovery
+# (see 'nexus-mdns' service below)
 class nexus {
 	pkg ["avahi"] {
 		state => "installed",
@@ -93,9 +107,9 @@ class nexus {
 		state => "running",
 		startup => "enabled",
 	}
-
 }
 
+# A regular node will use this class to run mgmt as a service.
 class mgmt {
 	file "/etc/systemd/system/mgmt.service" {
 		content => deploy.readfile("/files/mgmt.service"),
@@ -104,7 +118,7 @@ class mgmt {
 	}
 
 	file "/etc/sysconfig/mgmt" {
-		content => "MGMT_SEEDS=http://mgmt.local:2380\n",
+		content => "MGMT_SEEDS=http://${seed_host}:2380\n",
 		state => "exists",
 	}
 

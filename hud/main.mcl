@@ -7,6 +7,8 @@ import "iter"
 import "strings"
 import "deploy"
 
+# Run a webserver that shares node asset/inventory information
+# as reported using node.register
 class server {
 	http:server ":8001" {}
 
@@ -24,6 +26,7 @@ class server {
 		load => world.kvlookup("load"),
 	}
 
+	# Generate a JSON blob containing all the data for all nodes
 	$jsonblob = func($name) {
 		golang.template("\"{{ .Name | js }}\": {
 		\"uuid\": \"{{ index .St.Uuid .Name | js }}\"
