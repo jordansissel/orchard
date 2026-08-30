@@ -1,0 +1,49 @@
+import "world"
+import "fmt"
+import "golang"
+import "map"
+import "datetime"
+import "iter"
+import "strings"
+import "deploy"
+
+class server {
+	http:server ":8001" {
+	}
+
+	$uuid map{str: str} = world.kvlookup("uuid")
+	$cpu = world.kvlookup("cpu")
+	$memory = world.kvlookup("memory")
+	$os = world.kvlookup("os")
+
+	$st = struct {
+		uuid => $uuid,
+		cpu => $cpu,
+		memory => $memory,
+		os => $os,
+		uptime => world.kvlookup("uptime"),
+		load => world.kvlookup("load"),
+	}
+
+	$jsonblob = func($name) {
+		golang.template("\"{{ .Name | js }}\": {
+		\"uuid\": \"{{ index .St.Uuid .Name | js }}\"
+		, \"cpu\": \"{{ index .St.Cpu .Name | js }}\"
+		, \"memory\": \"{{ index .St.Memory .Name | js }}\"
+		, \"os\": \"{{ index .St.Os .Name | js }}\"
+		, \"uptime\": \"{{ index .St.Uptime .Name | js }}\"
+		, \"load\": \"{{ index .St.Load .Name | js }}\"
+	}", struct { name => $name, st => $st })
+	}
+
+	$entries = strings.join_nonempty(iter.map(map.keys($uuid), $jsonblob), ",\n")
+	$json = fmt.printf("{\n%s\n}", $entries)
+
+	http:server:file "/" {
+		data => deploy.readfile("/files/index.html"),
+	}
+	http:server:file "/entities.json" {
+		data => $json,
+		longpoll => true,
+	}
+}

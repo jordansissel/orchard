@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+
+<html>
+	<head>
+		<style>
+			.table {
+				width: fit-content;
+			}
+
+			.table > .entry {
+				border: 1px solid green;
+				display: grid;
+				grid-template-columns: repeat(7, 1fr);
+			}
+		</style>
+	</head>
+	<body>
+		<script async>
+			let headers = new Headers();
+			async function watch(path) {
+				//console.log(`Fetching ${path}`, headers);
+
+				let x;
+				try {
+					x = await fetch("/entities.json", { headers: headers });
+				} catch (e) {
+					//console.error(e);
+					return;
+				}
+
+				// Sometimes on refreshes, mgmt will report "server shutting down"
+				// Let's ignore those.
+				if (!x.ok) {
+					//console.log("Request was not ok", x);
+					return;
+				}
+				let size = parseInt(x.headers["content-length"]);
+
+				if (x.headers.has("last-modified")) {
+					headers.set("If-Modified-Since", x.headers.get("last-modified"))
+				}
+
+				let t = await x.text();
+				let data = JSON.parse(t);
+				//console.log(data);
+
+				let container = document.createElement("div");
+				container.classList.add("table");
+
+				function cell(klass, text) {
+					const el = document.createElement("div");
+					el.classList.add(klass)
+					el.innerText = text + "(" + klass + ")";
+					return el;
+				}
+
+				for (const [k,v] of Object.entries(data).sort()) {
+					let el = document.createElement("div");
+					el.classList.add("entry");
+
+					let children = [
+						cell("name", k)
+						, cell("os", v.os)
+						, cell("uptime", v.uptime)
+						, cell("load", v.load)
+						, cell("uuid", v.uuid)
+						, cell("cpu", v.cpu)
+						, cell("memory", v.memory)
+					];
+
+					el.replaceChildren(...children);
+
+					//console.log(el);
+					container.appendChild(el);
+				}
+
+				document.body.replaceChildren(container);
+			}
+
+			(async () => {
+				while (true) {
+					await watch("/entities.json");
+				}
+			})();
+				
+		</script>
+	</body>
+</html>

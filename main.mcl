@@ -1,0 +1,11 @@
+import "node/"
+import "hud/"
+
+include node.register
+
+if $hostname == "coffee.local" {
+	include hud.server
+	include node.nexus
+} else {
+	include node.mgmt
+}

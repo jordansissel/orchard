@@ -1,0 +1,13 @@
+[Unit]
+Description=Embrace mgmt for config management
+After=network.target
+After=dbus.service
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/sysconfig/mgmt
+ExecStart=mgmt run empty
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

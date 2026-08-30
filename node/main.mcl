@@ -1,0 +1,115 @@
+import "os"
+import "fmt"
+import "strings"
+import "iter"
+import "golang/strings" as gstr
+import "golang"
+import "sys"
+import "deploy"
+
+$is_model_name = func ($line) { strings.has_prefix($line, "model name") }
+
+func cpu_info() {
+	gstr.trim_prefix(iter.filter(strings.split(os.readfile("/proc/cpuinfo"), "\n"), $is_model_name)[0], "model name\t: ") 
+}
+
+func mem_info() {
+	gstr.trim_prefix(iter.filter(strings.split(os.readfile("/proc/meminfo"), "\n"), func($line) { strings.has_prefix($line, "MemTotal:" ) })[0], "MemTotal:       ")
+}
+
+class register {
+	$uuid = os.readfile("/sys/devices/virtual/dmi/id/product_uuid")
+	$cpu = cpu_info()
+	$mem = mem_info()
+
+	kv "uuid" {
+		mapped => true,
+		value => $uuid,
+	}
+
+	kv "cpu" {
+		mapped => true,
+		value => $cpu,
+	}
+
+	kv "memory" {
+		mapped => true,
+		value => $mem,
+	}
+
+	kv "os" {
+		mapped => true,
+		value => golang.template("{{ .Id }} {{ .Variant_id }} {{ .Version_id }}", os.release()),
+	}
+
+	#kv "uptime" {
+		#mapped => true,
+		#value => golang.template("{{ . }}", sys.uptime()),
+	#}
+
+	#kv "load" {
+		#mapped => true,
+		#value => golang.template("{{ .X1 }}", sys.load()),
+	#}
+}
+
+class nexus {
+	pkg ["avahi"] {
+		state => "installed",
+	}
+
+	file "/usr/local/bin/nexus-mdns.sh" {
+		content => deploy.readfile("/files/nexus-mdns.sh"),
+		mode => "u=wrx,g=rx,o=rx",
+		state => "exists",
+		Notify => Svc["nexus-mdns"],
+	}
+
+	file "/etc/systemd/system/nexus-mdns.service" {
+		content => deploy.readfile("/files/nexus-mdns.service"),
+		state => "exists",
+		Notify => Svc["nexus-mdns"],
+	}
+
+	svc "nexus-mdns" {
+		state => "running",
+		startup => "enabled",
+		Depend => Pkg["avahi"],
+	}
+
+	file "/etc/systemd/system/mgmt.service" {
+		content => deploy.readfile("/files/mgmt.service"),
+		state => "exists",
+		Notify => Svc["mgmt"],
+	}
+
+	file "/etc/sysconfig/mgmt" {
+		content => "MGMT_SERVER_URLS=http://0.0.0.0:2380\n",
+		state => "exists",
+		Notify => Svc["mgmt"],
+	}
+
+	svc "mgmt" {
+		state => "running",
+		startup => "enabled",
+	}
+
+}
+
+class mgmt {
+	file "/etc/systemd/system/mgmt.service" {
+		content => deploy.readfile("/files/mgmt.service"),
+		state => "exists",
+		Before => Svc["mgmt"],
+	}
+
+	file "/etc/sysconfig/mgmt" {
+		content => "MGMT_SEEDS=http://mgmt.local:2380\n",
+		state => "exists",
+	}
+
+	svc "mgmt" {
+		state => "running",
+		startup => "enabled",
+	}
+}
