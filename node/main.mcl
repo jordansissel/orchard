@@ -7,6 +7,8 @@ import "golang"
 import "sys"
 import "deploy"
 
+import "../systemd/"
+
 $seed_host = "mgmt.local"
 
 # Identify 'model name' line in /proc/cpuinfo
@@ -91,39 +93,14 @@ class nexus {
 		Depend => Pkg["avahi"],
 	}
 
-	file "/etc/systemd/system/mgmt.service" {
-		content => deploy.readfile("/files/mgmt.service"),
-		state => "exists",
-		Notify => Svc["mgmt"],
-	}
-
-	file "/etc/sysconfig/mgmt" {
-		content => "MGMT_SERVER_URLS=http://0.0.0.0:2380\n",
-		state => "exists",
-		Notify => Svc["mgmt"],
-	}
-
-	svc "mgmt" {
-		state => "running",
-		startup => "enabled",
-	}
+	include systemd.service("mgmt", struct {
+		run => "mgmt run empty --server-urls http://0.0.0.0:2380",
+	})
 }
 
 # A regular node will use this class to run mgmt as a service.
 class mgmt {
-	file "/etc/systemd/system/mgmt.service" {
-		content => deploy.readfile("/files/mgmt.service"),
-		state => "exists",
-		Before => Svc["mgmt"],
-	}
-
-	file "/etc/sysconfig/mgmt" {
-		content => "MGMT_SEEDS=http://${seed_host}:2380\n",
-		state => "exists",
-	}
-
-	svc "mgmt" {
-		state => "running",
-		startup => "enabled",
-	}
+	include systemd.service("mgmt", struct {
+		run => "mgmt run empty --seeds http://${seed_host}:2380",
+	})
 }

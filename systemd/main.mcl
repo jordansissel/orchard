@@ -1,0 +1,44 @@
+import "golang"
+import "deploy"
+
+# Placeholder to use as a default empty list that has a specific type.
+$empty_str_list []str = [ ]
+
+# Install and manage a systemd service
+#
+#	XXX: Add example + describe parameters in $st
+class service($name, $st) {
+	$config = struct{
+		run => $st->run,
+
+		description => $st->description || "no description given",
+		after => $st->after || $empty_str_list,
+		user => $st->user || "root",
+		group => $st->group || "root",
+		env => $st->env || {"MGMT_SERVICE" => $name},
+
+		startup => $st->startup || "enabled",
+		state => $st->state || "running",
+	}
+
+	$refresh_systemd = "refresh systemd"
+
+	file "/etc/systemd/system/${name}.service" {
+		content => golang.template(deploy.readfile("/files/template.service"), $config),
+		state => "exists",
+		Notify => Exec[$refresh_systemd],
+		Notify => Svc[$name],
+	}
+
+	# XXX: write an env file based on $config->env
+
+	exec $refresh_systemd {
+		cmd => "systemctl",
+		args => ["daemon-reload"],
+	}
+
+	svc $name {
+		startup => $config->startup,
+		state => $config->state,
+	}
+}
