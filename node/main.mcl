@@ -93,14 +93,14 @@ class nexus {
 		Depend => Pkg["avahi"],
 	}
 
-	include systemd.service("mgmt", struct {
+	include systemd.service("mgmt", struct{
 		run => "mgmt run empty --server-urls http://0.0.0.0:2380",
 	})
 }
 
 # A regular node will use this class to run mgmt as a service.
 class mgmt {
-	include systemd.service("mgmt", struct {
+	include systemd.service("mgmt", struct{
 		run => "mgmt run empty --seeds http://${seed_host}:2380",
 	})
 }

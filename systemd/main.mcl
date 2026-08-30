@@ -2,7 +2,7 @@ import "golang"
 import "deploy"
 
 # Placeholder to use as a default empty list that has a specific type.
-$empty_str_list []str = [ ]
+$empty_str_list []str = []
 
 # Install and manage a systemd service
 #
