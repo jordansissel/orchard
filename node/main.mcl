@@ -7,14 +7,14 @@ import "golang"
 import "sys"
 import "deploy"
 
-$is_model_name = func ($line) { strings.has_prefix($line, "model name") }
+$is_model_name = func($line) { strings.has_prefix($line, "model name") }
 
 func cpu_info() {
-	gstr.trim_prefix(iter.filter(strings.split(os.readfile("/proc/cpuinfo"), "\n"), $is_model_name)[0], "model name\t: ") 
+	gstr.trim_prefix(iter.filter(strings.split(os.readfile("/proc/cpuinfo"), "\n"), $is_model_name)[0], "model name\t: ")
 }
 
 func mem_info() {
-	gstr.trim_prefix(iter.filter(strings.split(os.readfile("/proc/meminfo"), "\n"), func($line) { strings.has_prefix($line, "MemTotal:" ) })[0], "MemTotal:       ")
+	gstr.trim_prefix(iter.filter(strings.split(os.readfile("/proc/meminfo"), "\n"), func($line) { strings.has_prefix($line, "MemTotal:") })[0], "MemTotal:       ")
 }
 
 class register {
@@ -43,13 +43,13 @@ class register {
 	}
 
 	#kv "uptime" {
-		#mapped => true,
-		#value => golang.template("{{ . }}", sys.uptime()),
+	#mapped => true,
+	#value => golang.template("{{ . }}", sys.uptime()),
 	#}
 
 	#kv "load" {
-		#mapped => true,
-		#value => golang.template("{{ .X1 }}", sys.load()),
+	#mapped => true,
+	#value => golang.template("{{ .X1 }}", sys.load()),
 	#}
 }
 
