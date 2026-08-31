@@ -38,12 +38,13 @@ class register {
 
 	kv "cpu" {
 		mapped => true,
-		value => $cpu,
+		value => cpu_info(),
 	}
 
 	kv "memory" {
 		mapped => true,
-		value => $mem,
+		value => mem_info(),
+		#value => os.system("grep MemTotal /proc/meminfo | sed -re 's/^[^:]+:\\s*//'"),
 	}
 
 	# os.release() reports on the os/distro/version
@@ -74,28 +75,29 @@ class nexus {
 		state => "installed",
 	}
 
-	file "/usr/local/bin/nexus-mdns.sh" {
+	$nexus_script = "/usr/local/bin/nexus-mdns.sh"
+
+	file $nexus_script {
 		content => deploy.readfile("/files/nexus-mdns.sh"),
 		mode => "u=wrx,g=rx,o=rx",
 		state => "exists",
 		Notify => Svc["nexus-mdns"],
 	}
 
-	file "/etc/systemd/system/nexus-mdns.service" {
-		content => deploy.readfile("/files/nexus-mdns.service"),
-		state => "exists",
-		Notify => Svc["nexus-mdns"],
-	}
+	include systemd.service("nexus-mdns", struct{
+		run => $nexus_script,
+	})
 
-	svc "nexus-mdns" {
-		state => "running",
-		startup => "enabled",
-		Depend => Pkg["avahi"],
-	}
+	Pkg["avahi"] -> Svc["nexus-mdns"]
 
 	include systemd.service("mgmt", struct{
-		run => "mgmt run empty --server-urls http://0.0.0.0:2380",
+		run => "mgmt run empty --no-autoedges --server-urls http://0.0.0.0:2380",
 	})
+
+	firewalld "mgmt" {
+		ports => [ "2380/tcp" ],
+		state => "exists",
+	}
 }
 
 # A regular node will use this class to run mgmt as a service.
