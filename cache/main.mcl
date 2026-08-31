@@ -1,0 +1,65 @@
+import "fmt"
+import "sys"
+import "golang/os" as g_os
+import "strings"
+import "os"
+
+$home = g_os.user_home_dir()
+$cache_path str = fmt.printf("%s/.local/cache/hotdesk/", $home)
+
+class caching_proxy($name, $address) {
+	http:server [ $name ] {
+		address => $address,
+	}
+
+	file $cache_path {
+		recurse => true, # ~/.local/cache doesn't always exist...
+		state => "exists",
+	}
+}
+
+# Serve a local path on the cache server
+class file($path str, $localpath str) {
+	$name = "${address} ${path}"
+	http:server:file $name {
+		server => $address,
+		filename => $path,
+		path => $localpath,
+	}
+}
+
+class proxy($name, $params) {
+	$path = $params->path
+	$cache = "${cache_path}/${path}"
+	$backend = $params->backend
+
+	# optional
+	$sub = $params->sub || ""
+
+	http:server:proxy $name {
+		server => $address,
+		cache => $cache,
+		path => $path,
+		head => $backend,
+		sub => $sub,
+	}
+}
+
+class distro {
+	# The odu.edu mirror had an empty repodata directory as of 2026-08-13... Use another for now.
+	include proxy(struct{path => "/fedora/", backend => "https://mirror.cs.odu.edu/"})
+	#include proxy(struct{path => "/fedora/", backend => "https://mirror-mci.yuki.net.uk/"})
+	#include proxy(struct{path => "/fedora/", backend => "https://mirror.pilotfiber.com/"})
+
+	include proxy(struct{path => "/debian/", backend => "http://deb.debian.org/"})
+
+	include proxy(struct{path => "/debian-archive/debian/", backend => "http://archive.debian.org/", sub => "/debian-archive/"})
+
+	include proxy(struct{path => "/debian-security/", backend => "http://security.debian.org/"})
+
+	include proxy(struct{path => "/ubuntu-ports/", backend => "http://ports.ubuntu.com/"})
+
+	include proxy(struct{path => "/ubuntu/", backend => "http://archive.ubuntu.com/"})
+
+	include proxy(struct{path => "/archlinux/", backend => "https://fastly.mirror.pkgbuild.com/", sub => "/archlinux/"})
+}
