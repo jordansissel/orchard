@@ -1,3 +1,8 @@
+# This file is managed by mgmt.
+#
+# Configuration inputs:
+# 	{{ . }}
+
 [Unit]
 Description={{ .Description }}
 {{- range .After }}
@@ -8,7 +13,7 @@ After={{ . }}
 Type=simple
 User={{ .User }}
 Group={{ .Group }}
-#EnvironmentFile=-{{ .Env }}
+EnvironmentFile=-/etc/sysconfig/{{ .Name }}
 ExecStart={{ .Run }}
 Restart=always
 

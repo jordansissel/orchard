@@ -19,6 +19,8 @@ class service($name, $st) {
 
 		startup => $st->startup || "enabled",
 		state => $st->state || "running",
+
+		name => $name,
 	}
 
 	$refresh_systemd = "refresh systemd"
@@ -30,7 +32,21 @@ class service($name, $st) {
 		Notify => Svc[$name],
 	}
 
-	# XXX: write an env file based on $config->env
+	# Convince the type system that $config->env is a map{str:str}
+	$env map{str: str} = $config->env
+
+	# Generate lines of KEY=VALUE and write it to /etc/sysconfig/$name
+	$envfile = golang.template("
+{{- range $k, $v := . -}}
+{{ $k }}={{ $v }}
+{{- end }}
+", $env)
+
+	file "/etc/sysconfig/${name}" {
+		content => $envfile,
+		state => "exists",
+		Notify => Svc[$name],
+	}
 
 	exec $refresh_systemd {
 		cmd => "systemctl",
