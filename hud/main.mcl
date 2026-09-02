@@ -6,6 +6,10 @@ import "datetime"
 import "iter"
 import "strings"
 import "deploy"
+import "golang/os" as g_os
+
+$home = g_os.user_home_dir()
+$state_path str = "${home}/.local/state/mgmt"
 
 # Run a webserver that shares node asset/inventory information
 # as reported using node.register
@@ -22,8 +26,8 @@ class server {
 		cpu => $cpu,
 		memory => $memory,
 		os => $os,
-		uptime => world.kvlookup("uptime"),
-		load => world.kvlookup("load"),
+		#uptime => world.kvlookup("uptime"),
+		#load => world.kvlookup("load"),
 	}
 
 	# Generate a JSON blob containing all the data for all nodes
@@ -33,19 +37,47 @@ class server {
 		, \"cpu\": \"{{ index .St.Cpu .Name | js }}\"
 		, \"memory\": \"{{ index .St.Memory .Name | js }}\"
 		, \"os\": \"{{ index .St.Os .Name | js }}\"
-		, \"uptime\": \"{{ index .St.Uptime .Name | js }}\"
-		, \"load\": \"{{ index .St.Load .Name | js }}\"
-	}", struct{name => $name, st => $st})
+		, \"now\": \"{{ .Now | js }}\"
+	}", struct{name => $name, now => datetime.now(), st => $st})
+	}
+
+	file "${state_path}/" {
+		recurse => true,
+		state => "exists",
 	}
 
 	$entries = strings.join_nonempty(iter.map(map.keys($uuid), $jsonblob), ",\n")
 	$json = fmt.printf("{\n%s\n}", $entries)
 
 	http:server:file "/" {
+		# XXX: Can this just point to the path, not a string?
 		data => deploy.readfile("/files/index.html"),
 	}
+
+	$entities_file = "${state_path}/entities.json"
+
+	# Two options for serving 'entities.json'
+	#
+	# First, using http:server:file 's data param
+	#   This keeps the value in-memory, but every change causes the http:server to 
+	#   restart as part of normal graph updates. This causes HTTP 503 for any active requests.
+	#
+	# Second, writing the contents to disk and then using http:server:file to serve that file.
+	# 	This stabilizes the HTTP 503 responses (server never needs to shutdown)
+	# 	However, mgmt's file writes are not atomic and a read may fetch the file after it is truncated and before it is written.
+	#
+	# 	So, still undesired behavior, but this second option localizes the errors to just this request.
+	# 	And a requester can treat invalid json as an error and retry.
+	# 	The server remains online the whole time.
+
+	file $entities_file {
+		content => $json,
+		state => "exists",
+	}
+
 	http:server:file "/entities.json" {
-		data => $json,
+		#data => $json,
+		path => $entities_file,
 		longpoll => true,
 	}
 }

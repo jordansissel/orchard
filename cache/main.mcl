@@ -5,14 +5,14 @@ import "strings"
 import "os"
 
 $home = g_os.user_home_dir()
-$cache_path str = fmt.printf("%s/.local/cache/hotdesk/", $home)
+$cache_path str = "${home}/.local/cache/mgmt"
 
 class caching_proxy($name, $address) {
 	http:server [ $name ] {
 		address => $address,
 	}
 
-	file $cache_path {
+	file "${cache_path}/" {
 		recurse => true, # ~/.local/cache doesn't always exist...
 		state => "exists",
 	}
