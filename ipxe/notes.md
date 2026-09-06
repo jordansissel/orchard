@@ -22,7 +22,6 @@ check stat /boot/efi, device `major,minor`
 read /proc/self/mountinfo 
 	* 3rd column is `major:minor`
 	* 5th column is /dev/whatever
-?
 
 // lsblk to find the disk device that has a partition(?) mounting /boot/efi
 lsblk --json | jq '.blockdevices[] | select (.children and (.children[].mountpoints | contains(["/boot/efi"]))) | .name'
