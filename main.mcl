@@ -1,11 +1,13 @@
 import "node/"
 import "hud/"
+import "cache/"
 
 include node.register
 
 if $hostname == "coffee.local" {
 	include hud.server
 	include node.nexus
+	include cache.caching_proxy("0.0.0.0:29145")
 } else {
 	include node.mgmt
 }
