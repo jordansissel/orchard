@@ -8,6 +8,7 @@ import "sys"
 import "deploy"
 
 import "../systemd/"
+import "../access/"
 
 $seed_host = "mgmt.local"
 
@@ -102,6 +103,12 @@ class nexus {
 
 # A regular node will use this class to run mgmt as a service.
 class mgmt {
+	pkg ["avahi", "nss-mdns"] {
+		state => "installed",
+	}
+
+	include access.base
+
 	include systemd.service("mgmt", struct{
 		run => "mgmt run empty --seeds http://${seed_host}:2380",
 	})
