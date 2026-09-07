@@ -1,11 +1,18 @@
 class base {
 	user "jls" {
 		state => "exists",
+		groups => [ "wheel" ],
 	}
 
 	ssh:authorized_key "yes" {
 		user => "jls",
 		state => "exists",
 		content => "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN+ExtFKyIpHz1EvUzmwZrAAgjTYNcskkcbliCM966kB jls@fedora",
+	}
+
+	line "jls sudoers" {
+		content => "%wheel ALL=(ALL) NOPASSWD: ALL",
+		state => "exists",
+		file => "/etc/sudoers",
 	}
 }
