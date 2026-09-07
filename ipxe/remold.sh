@@ -2,14 +2,15 @@
 
 set -e 
 
-#sudo dnf install -y ipxe-bootimgs-x86 jq
-#sudo cp /usr/share/ipxe/ipxe-x86_64.efi /boot/efi/EFI
+sudo dnf install -y ipxe-bootimgs-x86 jq
 
 #sudo apt-get install -y ipxe jq efibootmgr
 
 _jq() {
 	jq --arg efiroot /boot/efi "$@"
 }
+
+arch="$(uname -m)"
 
 devinfo="$(lsblk --json | _jq -r '.blockdevices[] | select (.children and (.children[].mountpoints | contains([$efiroot])))')"
 
@@ -39,30 +40,33 @@ echo "Partition: $partition"
 sudo tee /boot/efi/EFI/autoexec.ipxe > /dev/null << AUTOEXEC
 #!ipxe
 
-echo Hello world
+echo Hello world -- \${buildarch}
 sleep 1
 
 # Set repository URI
-set arch aarch64
+set arch x86_64
 set mirror http://10.0.2.2:29145/fedora/linux/releases/44
-set repo \${mirror}/Everything/\${arch}/os
+set repo \${mirror}/Everything/\${buildarch}/os
 
+
+echo Using : \${repo}
 dhcp
 
 echo 
 
 # Start installer
-kernel \${repo}/images/pxeboot/vmlinuz inst.repo=\${repo}
+kernel \${repo}/images/pxeboot/vmlinuz inst.repo=\${repo} -- console=/dev/tty1 console=/dev/ttyAMA0,115200n8
 initrd \${repo}/images/pxeboot/initrd.img
+shim ${repo}/EFI/BOOT/BOOTX64.EFI
+
+echo Booting...
 boot
 AUTOEXEC
 
 # Install ipxe and set nextboot to use it.
 
-arch="arm64"
-#sudo cp /usr/share/ipxe/ipxe-x86_64.efi /boot/efi/EFI
-sudo cp /usr/lib/ipxe/ipxe-${arch}.efi /boot/efi/EFI
-echo "OK"
+sudo cp /usr/share/ipxe/ipxe-x86_64.efi /boot/efi/EFI
+#sudo cp /usr/lib/ipxe/ipxe-${arch}.efi /boot/efi/EFI
 
 # Delete any old entry
 sudo efibootmgr -B -L ipxe || true
