@@ -1,0 +1,11 @@
+class base {
+	user "jls" {
+		state => "exists",
+	}
+
+	ssh:authorized_key "yes" {
+		user => "jls",
+		state => "exists",
+		content => "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN+ExtFKyIpHz1EvUzmwZrAAgjTYNcskkcbliCM966kB jls@fedora",
+	}
+}
