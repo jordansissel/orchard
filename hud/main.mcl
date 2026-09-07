@@ -37,8 +37,7 @@ class server {
 		, \"cpu\": \"{{ index .St.Cpu .Name | js }}\"
 		, \"memory\": \"{{ index .St.Memory .Name | js }}\"
 		, \"os\": \"{{ index .St.Os .Name | js }}\"
-		, \"now\": \"{{ .Now | js }}\"
-	}", struct{name => $name, now => datetime.now(), st => $st})
+	}", struct{name => $name, st => $st})
 	}
 
 	file "${state_path}/" {
@@ -70,10 +69,10 @@ class server {
 	# 	And a requester can treat invalid json as an error and retry.
 	# 	The server remains online the whole time.
 
-	#file $entities_file {
-		#content => $json,
-		#state => "exists",
-	#}
+	file $entities_file {
+		content => $json,
+		state => "exists",
+	}
 
 	http:server:file "/entities.json" {
 		#data => $json,
