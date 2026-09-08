@@ -48,7 +48,7 @@ class caching_proxy($address) {
 
 		# optional
 		#$sub = $params->sub <|> ""
-		$sub = $params->sub || ""
+		$sub = $params->sub <|> ""
 
 		$name = "${address} ${path}"
 		http:server:proxy $name {
