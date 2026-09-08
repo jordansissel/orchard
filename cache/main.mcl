@@ -5,6 +5,8 @@ import "strings"
 import "os"
 import "deploy"
 
+import "../systemd/"
+
 class manager {
 	include caching_proxy
 	include guest_exports
@@ -63,6 +65,7 @@ class caching_proxy($address) {
 
 	include contents("/installer/debian-preseed.txt", deploy.readfile("/files/debian-preseed.txt"))
 	include contents("/installer/fedora.ks", deploy.readfile("/files/fedora.ks"))
+	include file("/installer/mgmt.service", systemd.service("mgmt", struct { run => "mgmt run empty --no-autoedges --seeds http://mgmt.local:2380" }))
 
 	if false {
 		exec "create libfake.so" {

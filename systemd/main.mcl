@@ -4,6 +4,26 @@ import "deploy"
 # Placeholder to use as a default empty list that has a specific type.
 $empty_str_list []str = []
 
+func service($name, $st) {
+	golang.template(
+			deploy.readfile("/files/template.service"),
+			struct{
+			run => $st->run,
+
+			description => $st->description || "no description given",
+			after => $st->after || $empty_str_list,
+			user => $st->user || "root",
+			group => $st->group || "root",
+			env => $st->env || {"MGMT_SERVICE" => $name},
+
+			startup => $st->startup || "enabled",
+			state => $st->state || "running",
+
+			name => $name,
+			},
+		)
+}
+
 # Install and manage a systemd service
 #
 #	XXX: Add example + describe parameters in $st
@@ -32,7 +52,7 @@ class service($name, $st) {
 		Notify => Svc[$name],
 	}
 
-	# Convince the type system that $config->env is a map{str:str}
+	# Convince the type system that $config->env is a map{str;
 	$env map{str: str} = $config->env
 
 	# Generate lines of KEY=VALUE and write it to /etc/sysconfig/$name
