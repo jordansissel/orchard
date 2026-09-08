@@ -33,9 +33,11 @@ libvirt
 
 %post
 
-echo "POST. Readying mgmt."
-set -x
-curl -o /usr/local/bin/mgmt "http://192.168.12.100:29145/mgmt/1.1.0/mgmt-linux-amd64-1.1.0"
-chmod 755 /usr/local/bin/mgmt
-/usr/local/bin/mgmt run empty --converged-exit --seeds http://mgmt.local:2380
+SYSROOT=/mnt/sysroot
+cd /mnt/sysroot
+
+curl -o "usr/local/bin/mgmt" "http://192.168.12.100:29145/mgmt/1.1.0/mgmt-linux-amd64-1.1.0"
+chmod 755 usr/local/bin/mgmt
+curl -o etc/systemd/system/mgmt.service "http://192.168.12.100:29145/installer/mgmt.service"
+
 %end
