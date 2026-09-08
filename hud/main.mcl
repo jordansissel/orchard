@@ -26,6 +26,8 @@ class server {
 		cpu => $cpu,
 		memory => $memory,
 		os => $os,
+		machineid => world.kvlookup("machine-id"),
+		#ping => world.kvlookup("ping"),
 		#uptime => world.kvlookup("uptime"),
 		#load => world.kvlookup("load"),
 	}
@@ -33,11 +35,12 @@ class server {
 	# Generate a JSON blob containing all the data for all nodes
 	$jsonblob = func($name) {
 		golang.template("\"{{ .Name | js }}\": {
-		\"uuid\": \"{{ index .St.Uuid .Name | js }}\"
-		, \"cpu\": \"{{ index .St.Cpu .Name | js }}\"
-		, \"memory\": \"{{ index .St.Memory .Name | js }}\"
-		, \"os\": \"{{ index .St.Os .Name | js }}\"
-	}", struct{name => $name, st => $st})
+			\"uuid\": \"{{ index .St.Uuid .Name | js }}\"
+			, \"machine-id\": \"{{ index .St.Machineid .Name | js }}\"
+			, \"cpu\": \"{{ index .St.Cpu .Name | js }}\"
+			, \"memory\": \"{{ index .St.Memory .Name | js }}\"
+			, \"os\": \"{{ index .St.Os .Name | js }}\"
+		}", struct{name => $name, st => $st})
 	}
 
 	file "${state_path}/" {

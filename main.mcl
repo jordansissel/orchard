@@ -2,6 +2,9 @@ import "node/"
 import "hud/"
 import "cache/"
 
+import "strings"
+import "value"
+
 include node.register
 
 if $hostname == "coffee.local" {

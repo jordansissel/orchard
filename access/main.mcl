@@ -1,18 +1,185 @@
+import "value"
+import "local"
+import "world"
+import "os"
+import "convert"
+import "world/collect"
+import "iter"
+
+import "fmt"
+
 class base {
 	user "jls" {
 		state => "exists",
 		groups => [ "wheel" ],
 	}
 
-	ssh:authorized_key "yes" {
+	ssh:authorized_key "workstation" {
 		user => "jls",
 		state => "exists",
 		content => "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN+ExtFKyIpHz1EvUzmwZrAAgjTYNcskkcbliCM966kB jls@fedora",
+	}
+
+	ssh:authorized_key "laptop" {
+		user => "jls",
+		state => "exists",
+		content => "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBPMi8JLzSSECJpYR6Sd4sav11WBStpgyvB7NuVvDBQq21guZksLzQCvHfsBXMXsE+xes+Rao3Jglf/XZ9KNHc6QAAAAEc3NoOg==",
+
+	}
+
+	if os.user_exists("jls") {
+		$home = os.home("jls")
+
+		$ssh_ca = world.getval("ssh_ca")
+		if $ssh_ca->exists {
+			$known_hosts = "${home}/.ssh/known_hosts"
+			file $known_hosts {
+				owner => "jls",
+				state => "exists",
+			}
+
+			line "ssh-ca in ~jls/.ssh/known_hosts" {
+				file => $known_hosts,
+				content => "@cert-authority * " + $ssh_ca->value,
+				state => "exists",
+			}
+		}
 	}
 
 	line "jls sudoers" {
 		content => "%wheel ALL=(ALL) NOPASSWD: ALL",
 		state => "exists",
 		file => "/etc/sudoers",
+	}
+
+	include ssh
+}
+
+$keytypes = ["ed25519", "rsa", "ecdsa"]
+class ssh {
+	pkg "openssh-server" {
+		state => "installed",
+	}
+
+	svc "sshd" {
+		startup => "enabled",
+		state => "running",
+		Depend => Pkg["openssh-server"],
+	}
+
+	# Request signing of our ssh host keys
+	for $i, $keytype in $keytypes {
+		$pub = os.readfile("/etc/ssh/ssh_host_${keytype}_key.pub")
+
+		# XXX: Make this string into a function.
+		kv "ssh/${keytype}" {
+			mapped => true,
+			value => $pub,
+		}
+
+		$cert = "/etc/ssh/ssh_host_${keytype}_key.cert"
+
+		$cert_file = iter.filter(
+			collect.res("file"),
+			func($st) { $st->name == $cert },
+		)
+
+		collect file $cert_file {
+			Meta:hidden => false,
+			Before => File["/etc/ssh/sshd_config.d/99-certificate-${keytype}"],
+			Notify => Svc["sshd"],
+		}
+
+		file "/etc/ssh/sshd_config.d/99-certificate-${keytype}" {
+			content => "HostCertificate ${cert}\n",
+			state => "exists",
+			Notify => Svc["sshd"],
+		}
+	}
+}
+
+class ca {
+	schedule "certificate authority" {
+		max => 1,
+	}
+
+	$ca = world.schedule("certificate authority")
+
+	if $ca == [$hostname] {
+		include ca_elected
+	}
+}
+
+class ca_elected {
+	password "ssh ca passphrase" {
+		length => 32,
+		saved => true,
+	}
+
+	# XXX: A password() function would be nice.
+	value "ssh ca passphrase" {
+	}
+
+	Password["ssh ca passphrase"].password -> Value["ssh ca passphrase"].any
+
+	$passphrase = value.get_str("ssh ca passphrase")
+
+	$ssh_ca_dir = local.vardir("ssh-ca/")
+	$ssh_ca = $ssh_ca_dir + "ca.key"
+
+	if $passphrase->ready {
+		exec "create ssh certificate authority" {
+			cmd => "ssh-keygen",
+			args => [ "-f", $ssh_ca, "-C", "The Orchard", "-N", $passphrase->value ],
+			creates => $ssh_ca,
+		}
+
+		kv "ssh_ca" {
+			mapped => false,
+			value => os.readfile("${ssh_ca}.pub"),
+		}
+
+		for $i, $keytype in $keytypes {
+			forkv $host, $pub in world.kvlookup("ssh/${keytype}") {
+				$path = "${ssh_ca_dir}${host}.${keytype}"
+				$cert = "${path}-cert.pub"
+
+				print "ssh exporting ${host} / ${keytype} / ${path}" {
+					msg => "OK",
+					Meta:autogroup => false,
+				}
+
+				# ssh-keygen -I refuses to read from  stdin, so we have to write the host public key to disk.
+				file $path {
+					content => $pub,
+					state => "exists",
+				}
+
+				# Sign $pub and then send value back to the host
+				$exec = "sign ${host} ssh key ${keytype}"
+
+				exec $exec {
+					cmd => "ssh-keygen",
+					args => [ "-s", $ssh_ca, "-h", "-I", $host, "-P", $passphrase->value, $path ],
+					creates => $cert,
+					Depend => Exec["create ssh certificate authority"],
+					Depend => File[$path],
+				}
+
+				if os.file_exists($cert) {
+					print "exporting ${cert}" {
+						msg => "OK",
+						Meta:autogroup => false,
+					}
+
+					file "/etc/ssh/ssh_host_${keytype}_key.cert" {
+						content => os.readfile($cert),
+						state => "exists",
+						Meta:export => [ $host ],
+						Meta:hidden => true,
+					}
+				}
+			}
+		}
 	}
 }

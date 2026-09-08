@@ -5,6 +5,7 @@ import "iter"
 import "golang/strings" as gstr
 import "golang"
 import "sys"
+import "value"
 import "deploy"
 
 import "../systemd/"
@@ -28,13 +29,25 @@ func mem_info() {
 # Report this node's hardware/asset inventory
 class register {
 	# smbios type 1 field has a machine uuid... might be useful at some point?
-	$uuid = os.readfile("/sys/devices/virtual/dmi/id/product_uuid")
+	$uuid = strings.trim_space(os.readfile("/sys/devices/virtual/dmi/id/product_uuid"))
 	$cpu = cpu_info()
 	$mem = mem_info()
 
 	kv "uuid" {
 		mapped => true,
 		value => $uuid,
+	}
+
+	if os.file_exists("/etc/machine-id") {
+		kv "machine-id" {
+			mapped => true,
+			value => strings.trim_space(os.readfile("/etc/machine-id")),
+		}
+	} else {
+		kv "machine-id" {
+			mapped => true,
+			value => "none",
+		}
 	}
 
 	kv "cpu" {
@@ -99,6 +112,9 @@ class nexus {
 		ports => [ "2380/tcp" ],
 		state => "exists",
 	}
+
+	include access.ca
+	include access.base
 }
 
 # A regular node will use this class to run mgmt as a service.

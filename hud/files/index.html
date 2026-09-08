@@ -5,12 +5,29 @@
 		<style>
 			.table {
 				width: fit-content;
+				display: grid;
+				grid-template-columns: repeat(6, 1fr);
+				gap: 1rem;
+				border: 1px solid green;
+				background-color: rgb(from orange r g b / 50%);
+				margin: 1rem;
+				padding: 1rem;
+				font-family: monospace, sans-serif;
+			}
+
+			.table *:nth-child(-n + 6) {
+				border-bottom: 1px solid red;
+				font-weight: bold;
+			}
+
+			.table .uuid
+			, .table .machine-id {
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: pre;
 			}
 
 			.table > .entry {
-				border: 1px solid green;
-				display: grid;
-				grid-template-columns: repeat(7, 1fr);
 			}
 		</style>
 	</head>
@@ -51,20 +68,34 @@
 				function cell(klass, text) {
 					const el = document.createElement("div");
 					el.classList.add(klass)
-					el.innerText = text + "(" + klass + ")";
+					el.innerText = text;
 					return el;
 				}
 
+				let header = document.createDocumentFragment();
+				header.replaceChildren(
+					cell("name", "Name")
+					, cell("os", "OS")
+					, cell("cpu", "CPU")
+					, cell("memory", "Memory")
+					, cell("uuid", "UUID")
+					, cell("machine-id", "Machine ID")
+				);
+				container.appendChild(header);
+
+
 				for (const [k,v] of Object.entries(data).sort()) {
-					let el = document.createElement("div");
-					el.classList.add("entry");
+					//let el = document.createElement("div");
+					let el = document.createDocumentFragment();
+					//el.classList.add("entry");
 
 					let children = [
 						cell("name", k)
 						, cell("os", v.os)
-						, cell("now", v.now)
 						, cell("cpu", v.cpu)
-						, cell("memory", v.memory)
+						, cell("memory", Intl.NumberFormat("en-US", { maximumFractionDigits: 2, style: "unit", unit: "gigabyte" }).format(parseInt(v.memory) / 1024.0 / 1024.0))
+						, cell("uuid", v.uuid)
+						, cell("machine-id", v["machine-id"])
 					];
 
 					el.replaceChildren(...children);
