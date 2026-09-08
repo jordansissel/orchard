@@ -89,11 +89,11 @@ class ssh {
 
 			collect file $cert_file {
 				Meta:hidden => false,
-				Before => File["/etc/ssh/sshd_config.d/99-certificate-${keytype}"],
+				Before => File["/etc/ssh/sshd_config.d/99-certificate-${keytype}.conf"],
 				Notify => Svc["sshd"],
 			}
 
-			file "/etc/ssh/sshd_config.d/99-certificate-${keytype}" {
+			file "/etc/ssh/sshd_config.d/99-certificate-${keytype}.conf" {
 				content => "HostCertificate ${cert}\n",
 				state => "exists",
 				Notify => Svc["sshd"],
