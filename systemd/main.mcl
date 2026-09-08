@@ -4,20 +4,20 @@ import "deploy"
 # Placeholder to use as a default empty list that has a specific type.
 $empty_str_list []str = []
 
-func service($name, $st) {
+func service($name str, $cmd str, $st) str {
 	golang.template(
 		deploy.readfile("/files/template.service"),
 		struct{
-			run => $st->run,
+			run => $cmd,
 
-			description => $st->description || "no description given",
-			after => $st->after || $empty_str_list,
-			user => $st->user || "root",
-			group => $st->group || "root",
-			env => $st->env || {"MGMT_SERVICE" => $name},
+			description => $st->description <|> "no description given",
+			after => $st->after <|> $empty_str_list,
+			user => $st->user <|> "root",
+			group => $st->group <|> "root",
+			env => $st->env <|> {"MGMT_SERVICE" => $name},
 
-			startup => $st->startup || "enabled",
-			state => $st->state || "running",
+			startup => $st->startup <|> "enabled",
+			state => $st->state <|> "running",
 
 			name => $name,
 		},
@@ -31,14 +31,14 @@ class service($name, $st) {
 	$config = struct{
 		run => $st->run,
 
-		description => $st->description || "no description given",
-		after => $st->after || $empty_str_list,
-		user => $st->user || "root",
-		group => $st->group || "root",
-		env => $st->env || {"MGMT_SERVICE" => $name},
+		description => $st->description <|> "no description given",
+		after => $st->after <|> $empty_str_list,
+		user => $st->user <|> "root",
+		group => $st->group <|> "root",
+		env => $st->env <|> {"MGMT_SERVICE" => $name},
 
-		startup => $st->startup || "enabled",
-		state => $st->state || "running",
+		startup => $st->startup <|> "enabled",
+		state => $st->state <|> "running",
 
 		name => $name,
 	}
