@@ -5,7 +5,7 @@ import "iter"
 import "golang/strings" as gstr
 import "golang"
 import "sys"
-import "value"
+import "world"
 import "deploy"
 
 import "../systemd/"
@@ -85,6 +85,18 @@ class register {
 # This registers 'mgmt.local' in local mDNS for easy discovery
 # (see 'nexus-mdns' service below)
 class nexus {
+	schedule "nexus" {
+		max => 1,
+	}
+
+	$ca = world.schedule("nexus")
+
+	if $ca == [ $hostname ] {
+		include nexus_elected
+	} 
+}
+
+class nexus_elected {
 	pkg ["avahi"] {
 		state => "installed",
 	}
@@ -126,6 +138,6 @@ class mgmt {
 	include access.base
 
 	include systemd.service("mgmt", struct{
-		run => "mgmt run empty --seeds http://${seed_host}:2380",
+		run => "mgmt run empty --no-autoedges --seeds http://${seed_host}:2380",
 	})
 }
