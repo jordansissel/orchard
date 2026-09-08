@@ -10,7 +10,7 @@ class site {
 	$ca = world.schedule("certificate authority")
 	$nexus = world.schedule("nexus")
 
-	if $ca == [ $hostname ] or $nexus == [ $hostname ] {
+	if $ca == [$hostname] or $nexus == [$hostname] {
 		panic("This machine is important! Ignoring attempt to nuke it.")
 	} else {
 		$remold = "/tmp/remold-kexec.sh"
@@ -26,10 +26,9 @@ class site {
 
 		exec "remold" {
 			cmd => "bash",
-			args => [ $remold ],
+			args => [$remold],
 			Depend => File[$remold],
 			Depend => Pkg["avahi-tools"],
 		}
 	}
 }
-

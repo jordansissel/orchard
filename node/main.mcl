@@ -91,9 +91,9 @@ class nexus {
 
 	$ca = world.schedule("nexus")
 
-	if $ca == [ $hostname ] {
+	if $ca == [$hostname] {
 		include nexus_elected
-	} 
+	}
 }
 
 class nexus_elected {
@@ -121,7 +121,7 @@ class nexus_elected {
 	})
 
 	firewalld "mgmt" {
-		ports => [ "2380/tcp" ],
+		ports => ["2380/tcp"],
 		state => "exists",
 	}
 

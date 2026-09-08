@@ -11,7 +11,7 @@ import "fmt"
 class base {
 	user "jls" {
 		state => "exists",
-		groups => [ "wheel" ],
+		groups => ["wheel"],
 	}
 
 	ssh:authorized_key "workstation" {
@@ -122,8 +122,7 @@ class ca_elected {
 	}
 
 	# XXX: A password() function would be nice.
-	value "ssh ca passphrase" {
-	}
+	value "ssh ca passphrase" {}
 
 	Password["ssh ca passphrase"].password -> Value["ssh ca passphrase"].any
 
@@ -135,7 +134,7 @@ class ca_elected {
 	if $passphrase->ready {
 		exec "create ssh certificate authority" {
 			cmd => "ssh-keygen",
-			args => [ "-f", $ssh_ca, "-C", "The Orchard", "-N", $passphrase->value ],
+			args => ["-f", $ssh_ca, "-C", "The Orchard", "-N", $passphrase->value],
 			creates => $ssh_ca,
 		}
 
@@ -165,7 +164,7 @@ class ca_elected {
 
 				exec $exec {
 					cmd => "ssh-keygen",
-					args => [ "-s", $ssh_ca, "-h", "-I", $host, "-P", $passphrase->value, $path ],
+					args => ["-s", $ssh_ca, "-h", "-I", $host, "-P", $passphrase->value, $path],
 					creates => $cert,
 					Depend => Exec["create ssh certificate authority"],
 					Depend => File[$path],
@@ -180,7 +179,7 @@ class ca_elected {
 					file "/etc/ssh/ssh_host_${keytype}_key.cert" {
 						content => os.readfile($cert),
 						state => "exists",
-						Meta:export => [ $host ],
+						Meta:export => [$host],
 						Meta:hidden => true,
 					}
 				}

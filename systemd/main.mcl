@@ -6,8 +6,8 @@ $empty_str_list []str = []
 
 func service($name, $st) {
 	golang.template(
-			deploy.readfile("/files/template.service"),
-			struct{
+		deploy.readfile("/files/template.service"),
+		struct{
 			run => $st->run,
 
 			description => $st->description || "no description given",
@@ -20,8 +20,8 @@ func service($name, $st) {
 			state => $st->state || "running",
 
 			name => $name,
-			},
-		)
+		},
+	)
 }
 
 # Install and manage a systemd service
