@@ -2,3 +2,34 @@
 # It's the only way to be sure.
 #
 #                   - Ellen Ripley
+
+import "world"
+import "deploy"
+
+class site {
+	$ca = world.schedule("certificate authority")
+	$nexus = world.schedule("nexus")
+
+	if $ca == [ $hostname ] or $nexus == [ $hostname ] {
+		panic("This machine is important! Ignoring attempt to nuke it.")
+	} else {
+		$remold = "/tmp/remold-kexec.sh"
+
+		pkg "avahi-tools" {
+			state => "installed",
+		}
+
+		file $remold {
+			content => deploy.readfile("/files/remold-kexec.sh"),
+			state => "exists",
+		}
+
+		exec "remold" {
+			cmd => "bash",
+			args => [ $remold ],
+			Depend => File[$remold],
+			Depend => Pkg["avahi-tools"],
+		}
+	}
+}
+
