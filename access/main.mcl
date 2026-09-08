@@ -69,31 +69,36 @@ class ssh {
 
 	# Request signing of our ssh host keys
 	for $i, $keytype in $keytypes {
-		$pub = os.readfile("/etc/ssh/ssh_host_${keytype}_key.pub")
+		$pub_path = "/etc/ssh/ssh_host_${keytype}_key.pub"
+		if os.file_exists($pub_path) {
+			$pub = os.readfile($pub_path)
 
-		# XXX: Make this string into a function.
-		kv "ssh/${keytype}" {
-			mapped => true,
-			value => $pub,
-		}
+			# XXX: Make this string into a function.
+			kv "ssh/${keytype}" {
+				mapped => true,
+				value => $pub,
+				Depend => Pkg["openssh-server"],
+			}
 
-		$cert = "/etc/ssh/ssh_host_${keytype}_key.cert"
+			$cert = "/etc/ssh/ssh_host_${keytype}_key.cert"
 
-		$cert_file = iter.filter(
-			collect.res("file"),
-			func($st) { $st->name == $cert },
-		)
+			$cert_file = iter.filter(
+				collect.res("file"),
+				func($st) { $st->name == $cert },
+			)
 
-		collect file $cert_file {
-			Meta:hidden => false,
-			Before => File["/etc/ssh/sshd_config.d/99-certificate-${keytype}"],
-			Notify => Svc["sshd"],
-		}
+			collect file $cert_file {
+				Meta:hidden => false,
+				Before => File["/etc/ssh/sshd_config.d/99-certificate-${keytype}"],
+				Notify => Svc["sshd"],
+			}
 
-		file "/etc/ssh/sshd_config.d/99-certificate-${keytype}" {
-			content => "HostCertificate ${cert}\n",
-			state => "exists",
-			Notify => Svc["sshd"],
+			file "/etc/ssh/sshd_config.d/99-certificate-${keytype}" {
+				content => "HostCertificate ${cert}\n",
+				state => "exists",
+				Notify => Svc["sshd"],
+				Depend => Pkg["openssh-server"],
+			}
 		}
 	}
 }
