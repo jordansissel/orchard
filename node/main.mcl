@@ -16,6 +16,8 @@ $seed_host = "mgmt.local"
 # Identify 'model name' line in /proc/cpuinfo
 $is_model_name = func($line) { strings.has_prefix($line, "model name") }
 
+$is_macos = os.file_exists("/Applications")
+
 # Grab the cpu model name from /proc/cpuinfo
 func cpu_info() {
 	gstr.trim_prefix(iter.filter(strings.split(os.readfile("/proc/cpuinfo"), "\n"), $is_model_name)[0], "model name\t: ")
@@ -89,14 +91,21 @@ class nexus {
 		max => 1,
 	}
 
-	$ca = world.schedule("nexus")
-
-	if $ca == [$hostname] {
+	if world.schedule("nexus") == [$hostname] {
 		include nexus_elected
 	}
 }
 
 class nexus_elected {
+	if not $is_macos {
+		include nexus_advertisement
+	}
+
+	include access.ca
+	include access.base
+}
+
+class nexus_advertisement {
 	pkg ["avahi"] {
 		state => "installed",
 	}
@@ -120,13 +129,10 @@ class nexus_elected {
 		run => "mgmt run empty --no-autoedges --server-urls http://0.0.0.0:2380",
 	})
 
-	firewalld "mgmt" {
-		ports => ["2380/tcp"],
-		state => "exists",
-	}
-
-	include access.ca
-	include access.base
+	#firewalld "mgmt" {
+	#ports => ["2380/tcp"],
+	#state => "exists",
+	#}
 }
 
 # A regular node will use this class to run mgmt as a service.

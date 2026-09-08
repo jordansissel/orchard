@@ -8,6 +8,8 @@ import "iter"
 
 import "fmt"
 
+$is_macos = os.file_exists("/Applications")
+
 class base {
 	user "jls" {
 		state => "exists",
@@ -52,7 +54,9 @@ class base {
 		file => "/etc/sudoers",
 	}
 
-	include ssh
+	if not $is_macos {
+		include ssh
+	}
 }
 
 $keytypes = ["ed25519", "rsa", "ecdsa"]

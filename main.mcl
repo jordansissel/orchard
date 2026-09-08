@@ -6,9 +6,11 @@ import "nuke/"
 import "strings"
 import "value"
 
-include node.register
+if $hostname != "eclair.local" {
+	include node.register
+}
 
-if $hostname == "coffee.local" {
+if $hostname == "coffee.local" or $hostname == "eclair.local" {
 	include hud.server
 	include node.nexus
 	include cache.caching_proxy("0.0.0.0:29145")
