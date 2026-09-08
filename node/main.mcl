@@ -29,7 +29,7 @@ func mem_info() {
 # Report this node's hardware/asset inventory
 class register {
 	# smbios type 1 field has a machine uuid... might be useful at some point?
-	$uuid = strings.trim_space(os.readfile("/sys/devices/virtual/dmi/id/product_uuid"))
+	$uuid = strings.trim_space(os.readfile("/sys/devices/virtual/dmi/id/product_uuid") <|> "none")
 	$cpu = cpu_info()
 	$mem = mem_info()
 
