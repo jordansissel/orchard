@@ -118,7 +118,7 @@ class ca {
 class ca_elected {
 	password "ssh ca passphrase" {
 		length => 32,
-		saved => true,
+		#saved => true,
 	}
 
 	# XXX: A password() function would be nice.
@@ -138,49 +138,51 @@ class ca_elected {
 			creates => $ssh_ca,
 		}
 
-		kv "ssh_ca" {
-			mapped => false,
-			value => os.readfile("${ssh_ca}.pub"),
-		}
+		if os.file_exists("${ssh_ca}.pub") {
+			kv "ssh_ca" {
+				mapped => false,
+				value => os.readfile("${ssh_ca}.pub"),
+			}
 
-		for $i, $keytype in $keytypes {
-			forkv $host, $pub in world.kvlookup("ssh/${keytype}") {
-				$path = "${ssh_ca_dir}${host}.${keytype}"
-				$cert = "${path}-cert.pub"
+			for $i, $keytype in $keytypes {
+				forkv $host, $pub in world.kvlookup("ssh/${keytype}") {
+					$path = "${ssh_ca_dir}${host}.${keytype}"
+					$cert = "${path}-cert.pub"
 
-				print "ssh exporting ${host} / ${keytype} / ${path}" {
-					msg => "OK",
-					Meta:autogroup => false,
-				}
-
-				# ssh-keygen -I refuses to read from  stdin, so we have to write the host public key to disk.
-				file $path {
-					content => $pub,
-					state => "exists",
-				}
-
-				# Sign $pub and then send value back to the host
-				$exec = "sign ${host} ssh key ${keytype}"
-
-				exec $exec {
-					cmd => "ssh-keygen",
-					args => ["-s", $ssh_ca, "-h", "-I", $host, "-P", $passphrase->value, $path],
-					creates => $cert,
-					Depend => Exec["create ssh certificate authority"],
-					Depend => File[$path],
-				}
-
-				if os.file_exists($cert) {
-					print "exporting ${cert}" {
+					print "ssh exporting ${host} / ${keytype} / ${path}" {
 						msg => "OK",
 						Meta:autogroup => false,
 					}
 
-					file "/etc/ssh/ssh_host_${keytype}_key.cert" {
-						content => os.readfile($cert),
+					# ssh-keygen -I refuses to read from  stdin, so we have to write the host public key to disk.
+					file $path {
+						content => $pub,
 						state => "exists",
-						Meta:export => [$host],
-						Meta:hidden => true,
+					}
+
+					# Sign $pub and then send value back to the host
+					$exec = "sign ${host} ssh key ${keytype}"
+
+					exec $exec {
+						cmd => "ssh-keygen",
+						args => ["-s", $ssh_ca, "-h", "-I", $host, "-P", $passphrase->value, $path],
+						creates => $cert,
+						Depend => Exec["create ssh certificate authority"],
+						Depend => File[$path],
+					}
+
+					if os.file_exists($cert) {
+						print "exporting ${cert}" {
+							msg => "OK",
+							Meta:autogroup => false,
+						}
+
+						file "/etc/ssh/ssh_host_${keytype}_key.cert" {
+							content => os.readfile($cert),
+							state => "exists",
+							Meta:export => [$host],
+							Meta:hidden => true,
+						}
 					}
 				}
 			}
