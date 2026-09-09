@@ -2,10 +2,15 @@
 
 set -e 
 
-sudo dnf install -y kexec-tools
+if [ -z "$1" ] ; then
+	echo "Usage: $0 <nexus host>"
+	exit 1
+fi
+
+#sudo dnf install -y kexec-tools
 #sudo apt-get install -y kexec-tools
 
-dlhost="$(avahi-resolve --name mgmt.local | cut -f 2)"
+dlhost="$(getent hosts "$1" | head -n1 | sed -e 's/ .*$//')"
 #dlhost="10.0.2.2"
 
 arch="$(uname -m)"
@@ -13,8 +18,9 @@ mirror="http://${dlhost}:29145/fedora/linux/releases/44"
 repo="${mirror}/Everything/${arch}/os"
 
 cd /tmp
-curl -LO "${repo}/images/pxeboot/vmlinuz"
-curl -LO "${repo}/images/pxeboot/initrd.img"
+
+curl -Lo vmlinuz.part "${repo}/images/pxeboot/vmlinuz" && mv vmlinuz.part vmlinuz
+curl -Lo initrd.img "${repo}/images/pxeboot/initrd.img" && mv initrd.img.part initrd.img
 
 echo "Let's goooooo"
 set -x
