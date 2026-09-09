@@ -20,7 +20,7 @@ $is_macos = os.file_exists("/Applications")
 
 # Grab the cpu model name from /proc/cpuinfo
 func cpu_info() {
-	gstr.trim_prefix(iter.filter(strings.split(os.readfile("/proc/cpuinfo"), "\n"), $is_model_name)[0], "model name\t: ")
+	gstr.trim_prefix(iter.filter(strings.split(os.readfile("/proc/cpuinfo"), "\n"), $is_model_name)[0] <|> "unknown", "model name\t: ")
 }
 
 # Grab the MemTotal value from /proc/meminfo
@@ -41,9 +41,15 @@ class register {
 	}
 
 	if os.file_exists("/etc/machine-id") {
+		$machine_id = strings.trim_space(os.readfile("/etc/machine-id"))
+
+		kv "foobar" {
+			mapped => true,
+			value => "",
+		}
 		kv "machine-id" {
 			mapped => true,
-			value => strings.trim_space(os.readfile("/etc/machine-id")),
+			value => $machine_id,
 		}
 	} else {
 		kv "machine-id" {
@@ -99,10 +105,10 @@ class nexus {
 class nexus_elected {
 	if not $is_macos {
 		include nexus_advertisement
+		include access.base
 	}
 
 	include access.ca
-	include access.base
 }
 
 class nexus_advertisement {
@@ -142,6 +148,24 @@ class mgmt {
 	}
 
 	include access.base
+
+	if os.is_virtual() {
+		# My virtual machines can't (yet) see local subnet multicast, so just hardcode the ip.
+		line "mgmt.local in /etc/hosts" {
+			content => "10.0.2.2 mgmt.local",
+			file => "/etc/hosts",
+			state => "exists",
+		}
+
+		pkg "dmidecode" {
+			state => "installed",
+		}
+
+		if os.file_exists("/usr/bin/dmidecode") {
+			$hotdesk_name = strings.trim_space(os.system("dmidecode -s system-product-name"))
+			hostname [$hotdesk_name] {}
+		}
+	}
 
 	include systemd.service("mgmt", struct{
 		run => "mgmt run empty --no-autoedges --seeds http://${seed_host}:2380",

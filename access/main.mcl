@@ -169,7 +169,7 @@ class ca_elected {
 
 					exec $exec {
 						cmd => "ssh-keygen",
-						args => ["-s", $ssh_ca, "-h", "-I", $host, "-P", $passphrase->value, $path],
+						args => ["-s", $ssh_ca, "-h", "-I", $host, "-i", $host, "-P", $passphrase->value, $path],
 						creates => $cert,
 						Depend => Exec["create ssh certificate authority"],
 						Depend => File[$path],

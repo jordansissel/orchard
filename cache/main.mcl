@@ -7,6 +7,8 @@ import "deploy"
 
 import "../systemd/"
 
+$is_macos = os.file_exists("/Applications")
+
 class manager {
 	include caching_proxy
 	include guest_exports
@@ -60,26 +62,18 @@ class caching_proxy($address) {
 		}
 	}
 
-	include proxy(struct{path => "/mgmt/", backend => "https://github.com/purpleidea/mgmt/releases/download/", sub => "/mgmt/"})
+	if $is_macos {
+		include file("/mgmt/latest", os.expand_home("~/projects/mgmt/build/mgmt-linux-arm64"))
+	} else {
+		#include proxy(struct{path => "/mgmt/", backend => "https://github.com/purpleidea/mgmt/releases/download/", sub => "/mgmt/"})
+		include file("/mgmt/latest", deploy.binary_path())
+	}
+
 	include file("/hotdesk/guest.mcl", fmt.printf("%s/mcl/guest.mcl", g_os.getwd()))
 
 	include contents("/installer/debian-preseed.txt", deploy.readfile("/files/debian-preseed.txt"))
 	include contents("/installer/fedora.ks", deploy.readfile("/files/fedora.ks"))
 	include contents("/installer/mgmt.service", systemd.service("mgmt", "mgmt run empty --no-autoedges --seeds http://mgmt.local:2380", struct{}))
-
-	if false {
-		exec "create libfake.so" {
-			cmd => "make",
-			args => ["-C", "/home/jls/projects/hotdesk/fakelib", "all"],
-			creates => "/home/jls/projects/hotdesk/fakelib/libfake.so",
-		}
-
-		Exec["create libfake.so"] -> Http:Server:File["/fakelib/libfake.so"]
-
-		include file("/fakelib/libfake.so", "/home/jls/projects/hotdesk/fakelib/libfake.so")
-
-		include file("/fakelib/install-fakelib.sh", "/home/jls/projects/hotdesk/fakelib/install-fakelib.sh")
-	}
 
 	$cache_path str = fmt.printf("%s/.local/cache/hotdesk/", sys.getenv("HOME"))
 
