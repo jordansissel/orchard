@@ -4,6 +4,9 @@ import "golang/os" as g_os
 import "strings"
 import "os"
 import "deploy"
+import "convert"
+import "local"
+
 
 import "../systemd/"
 
@@ -36,11 +39,23 @@ class caching_proxy($address) {
 
 	class contents($path str, $contents str) {
 		$name = "${address} ${path}"
-		http:server:file $name {
-			server => $address,
-			filename => $path,
-			data => $contents,
+
+		# local.pool rejects if the 2nd arg has a slash??
+		$id = convert.int_to_str(local.pool("http cache", strings.replace_all($path, "/", "_")))
+
+		#print "local pool ${path}" {
+			#Meta:autogroup => false,
+			#msg => fmt.printf("ID: %d", $id2),
+		#}
+
+		$local = local.vardir("cache-file/") + $id
+
+		file [ $local ] {
+			content => $contents,
+			state => "exists",
 		}
+
+		include file($path, $local)
 	}
 
 	class proxy($params) {

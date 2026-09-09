@@ -3,8 +3,8 @@ text
 bootloader --location mbr --append="console=tty1 console=ttyS0,115200"
 # XXX: How to know what the drive names are?
 # XXX: use a %pre script?
-#clearpart --all --drives=vda
 clearpart --all --drives=nvme0n1
+#clearpart --all --drives=vda
 lang en_US.UTF-8
 autopart --type=plain
 
