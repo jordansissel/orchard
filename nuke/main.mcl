@@ -5,30 +5,57 @@
 
 import "world"
 import "deploy"
+import "fmt"
+import "os"
+import "strings"
 
 class site {
 	$ca = world.schedule("certificate authority")
 	$nexus = world.schedule("nexus")
 
-	if $ca == [$hostname] or $nexus == [$hostname] {
-		panic("This machine is important! Ignoring attempt to nuke it.")
-	} else {
-		$remold = "/tmp/remold-kexec.sh"
+	if len($nexus) > 0 {
+		if $ca == [$hostname] or $nexus == [$hostname] {
+			panic("This machine is important! Ignoring attempt to nuke it.")
+		} else {
+			#$dl = strings.trim_space(os.system("getent hosts mgmt.local | awk '{print $1}'"))
+			$dl = "192.168.12.100"
 
-		pkg "avahi-tools" {
-			state => "installed",
-		}
+			file "/tmp/x" {
+				content => fmt.printf("%v", $nexus),
+				state => "exists",
+			}
 
-		file $remold {
-			content => deploy.readfile("/files/remold-kexec.sh"),
-			state => "exists",
-		}
+			pkg "avahi-tools" {
+				state => "installed",
+			}
 
-		exec "remold" {
-			cmd => "bash",
-			args => [$remold],
-			Depend => File[$remold],
-			Depend => Pkg["avahi-tools"],
+			#$arch = strings.trim_space(os.system("uname -m"))
+			$arch = "x86_64"
+
+			$baseurl = "http://${dl}:29145/fedora/linux/releases/44/Everything/${arch}/os"
+
+			http:client "/tmp/vmlinuz" {
+				url => "${baseurl}/images/pxeboot/vmlinuz",
+				Meta:retry => 5,
+				Meta:delay => 2,
+				Meta:poll => -1,
+			}
+
+			http:client "/tmp/initrd.img" {
+				url => "${baseurl}/images/pxeboot/initrd.img",
+				longpoll => false,
+				Meta:retry => 5,
+				Meta:delay => 2,
+				Meta:poll => -1,
+			}
+				
+			$args = "console=tty1 console=ttyS0,115200n8 inst.repo=${baseurl} inst.ks=http://${dl}:29145/installer/fedora.ks"
+			exec "kexec" {
+				cmd => "kexec",
+				args => [ "--initrd", "/tmp/initrd.img", "--append", "\"${args}\"", "/tmp/vmlinuz" ],
+				Depend => Http:Client["/tmp/initrd.img"],
+				Depend => Http:Client["/tmp/vmlinuz"],
+			}
 		}
 	}
 }
