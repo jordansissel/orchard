@@ -1,0 +1,31 @@
+#cloud-config
+{
+  "bootcmd": [
+    "curl -o '/usr/bin/mgmt' 'http://192.168.12.100:29145/mgmt/current'",
+    "chmod 755 /usr/bin/mgmt",
+    "sed -i -e '/^metalink=/d; s@^#baseurl=http://download.example/pub/fedora/@baseurl=http://192.168.12.100:29145/fedora/@' /etc/yum.repos.d/fedora{,-updates}.repo"
+  ],
+  "chpasswd": {
+    "expire": false,
+    "users": [
+      {
+        "name": "dev",
+        "password": "dev",
+        "type": "text"
+      }
+    ]
+  },
+  "packages": [
+    "PackageKit",
+    "polkit"
+  ],
+  "power_state": {
+    "condition": true,
+    "delay": "now",
+    "mode": "poweroff"
+  },
+  "runcmd": [
+    "mgmt --version",
+    "mgmt run empty --no-autoedges --converged-exit --converger-timeout 15 --seeds http://192.168.12.100:2380 2>&1"
+  ],
+}
