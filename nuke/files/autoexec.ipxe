@@ -1,0 +1,24 @@
+#!ipxe
+#
+
+echo Hello world -- ${buildarch}
+sleep 1
+
+set dlhost 192.168.12.100
+set arch x86_64
+
+set cmdline console=tty1 console=ttyS0 ip=dhcp rd.neednet=1
+
+echo Command line
+echo ${cmdline}
+
+dhcp
+
+echo Booting... with: ${cmdline}
+shim http://${dlhost}:29145/installer/BOOTX64.efi
+initrd http://${dlhost}:29145/installer/initrd
+kernel http://${dlhost}:29145/installer/kernel ${cmdline}
+
+boot
+
+
