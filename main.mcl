@@ -23,7 +23,7 @@ if $hostname == "coffee.local" or $hostname == "eclair.local" {
 } else {
 	include node.mgmt
 
-	if $hostname == "pizza.lan" {
+	if $hostname == "fedora-44-gnome" {
 		include nuke.site
 	}
 }

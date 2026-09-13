@@ -29,7 +29,7 @@ class contents($address str, $path str, $contents str) {
 
 	$local = local.vardir("cache-file/") + $id
 
-	file [ $local ] {
+	file [$local] {
 		content => $contents,
 		state => "exists",
 	}
@@ -76,7 +76,7 @@ class caching_proxy($address) {
 	$seed_host = "mgmt.local"
 	$seed_ip str = strings.split(os.system("avahi-resolve -n ${seed_host}"), "\t")[1]
 
-	include contents($address, "/installer/fedora.ks", golang.template( deploy.readfile("/files/fedora.ks"), struct { host => $seed_ip }))
+	include contents($address, "/installer/fedora.ks", golang.template(deploy.readfile("/files/fedora.ks"), struct{host => $seed_ip}))
 	include contents($address, "/installer/cloud-init/meta-data", "")
 
 	# cloud-init checks and waits for these files, so it's faster to just serve empty files.

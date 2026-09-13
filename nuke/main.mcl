@@ -17,7 +17,7 @@ class service($http_server) {
 	$initrd = local.vardir("nuke/") + "initrd"
 	$write = local.vardir("nuke/") + "write-and-reboot.sh"
 
-	file [ $write ] {
+	file [$write] {
 		content => deploy.readfile("/files/write-image-and-reboot.sh"),
 		state => "exists",
 	}
@@ -55,13 +55,13 @@ class service($http_server) {
 			# Bring some tools into the initrd from the host.
 			"--install",
 			"lsblk xz jq kexec shutdown efibootmgr",
-			
+
 			# Add a script that runs at the end of dracut's pre-pivot.
 			# This will run before attempting to mount rootfs and is a good time to burn a disk image.
 			"--include",
 			$write,
 			"/var/lib/dracut/hooks/pre-pivot/99image-disk.sh",
-			
+
 			# Compress the initrd
 			"--zstd",
 
@@ -106,7 +106,8 @@ class site {
 		if $ca == [$hostname] or $nexus == [$hostname] {
 			panic("This machine is important! Ignoring attempt to nuke it.")
 		} else {
-			include with_ipxe
+			#include with_ipxe
+			include with_kexec
 		}
 	}
 }
@@ -117,7 +118,7 @@ class with_ipxe {
 	}
 
 	$remold = local.vardir("reimage-prep/") + "remold-ipxe.sh"
-	file [ $remold ]  {
+	file [$remold] {
 		content => deploy.readfile("/files/remold-ipxe.sh"),
 		state => "exists",
 		Depend => Pkg["jq"],
@@ -129,37 +130,37 @@ class with_ipxe_old {
 	$dl = "192.168.12.100"
 
 	#http:client [ $ipxe_tmp ] {
-		#url => "http://${dl}:29145/installer/ipxe-x86_64.efi",
-		#Meta:retry => 5,
-		#Meta:delay => 2000,
-		#Meta:poll => -1,
+	#url => "http://${dl}:29145/installer/ipxe-x86_64.efi",
+	#Meta:retry => 5,
+	#Meta:delay => 2000,
+	#Meta:poll => -1,
 	#}
 	$ipxe_url = "http://${dl}:29145/installer/ipxe-x86_64.efi"
 	$ipxe_path = "/boot/efi/EFI/ipxe.efi"
 	exec "curl $ipxe_url" {
 		cmd => "curl",
-		args => [ "--retry", "5", "--retry-delay", "2", "-o", $ipxe_path, $ipxe_url ],
+		args => ["--retry", "5", "--retry-delay", "2", "-o", $ipxe_path, $ipxe_url],
 		creates => $ipxe_path,
 	}
 
 	#file "/boot/efi/EFI/ipxe.efi" {
-		#state => "exists",
-		#source => $ipxe_tmp,
-		#Depend => Http:Client[ $ipxe_tmp ],
+	#state => "exists",
+	#source => $ipxe_tmp,
+	#Depend => Http:Client[ $ipxe_tmp ],
 	#}
-	
+
 	#http:client "/boot/efi/EFI/autoexec.ipxe" {
-		#url => "http://${dl}:29145/installer/autoexec.ipxe",
-		#Meta:retry => 5,
-		#Meta:delay => 2000,
-		#Meta:poll => -1,
+	#url => "http://${dl}:29145/installer/autoexec.ipxe",
+	#Meta:retry => 5,
+	#Meta:delay => 2000,
+	#Meta:poll => -1,
 	#}
-	
+
 	$autoexec_url = "http://${dl}:29145/installer/autoexec.ipxe"
 	$autoexec_path = "/boot/efi/EFI/autoexec.ipxe"
 	exec "curl $autoexec_url" {
 		cmd => "curl",
-		args => [ "--retry", "5", "--retry-delay", "2", "-o", $autoexec_path, $autoexec_url ],
+		args => ["--retry", "5", "--retry-delay", "2", "-o", $autoexec_path, $autoexec_url],
 		creates => $autoexec_path,
 		Meta:retry => 5,
 		Meta:delay => 2000,
@@ -173,14 +174,14 @@ class with_ipxe_old {
 	$partition = $efi_disk[1]
 	exec "prepare ipxe for next boot" {
 		cmd => "efibootmgr",
-		args => [ "-c", "-l", "\\EFI\\ipxe.efi", "-L", "orchard nuke", "-d", "/dev/${dev}", "-p", $partition ],
+		args => ["-c", "-l", "\\EFI\\ipxe.efi", "-L", "orchard nuke", "-d", "/dev/${dev}", "-p", $partition],
 		#Depend => File["/boot/efi/EFI/ipxe.efi"],
 		Depend => Exec["curl $ipxe_url"],
 	}
 
 	exec "set ipxe as next boot" {
 		cmd => "sh",
-		args => [ "-c", "efibootmgr | sed -Ene '/orchard/s/^Boot([0-9A-Fa-f]+).*/\\1/p' | xargs -n1 efibootmgr -n" ],
+		args => ["-c", "efibootmgr | sed -Ene '/orchard/s/^Boot([0-9A-Fa-f]+).*/\\1/p' | xargs -n1 efibootmgr -n"],
 		#Depend => Http:Client["/boot/efi/EFI/autoexec.ipxe"],
 		Depend => Exec["curl $autoexec_url"],
 		Depend => Exec["prepare ipxe for next boot"],
@@ -191,12 +192,7 @@ class with_kexec {
 	#$dl = strings.trim_space(os.system("getent hosts mgmt.local | awk '{print $1}'"))
 	$dl = "192.168.12.100"
 
-	file "/tmp/x" {
-		content => fmt.printf("%v", $nexus),
-		state => "exists",
-	}
-
-	pkg [ "avahi-tools", "kexec-tools" ] {
+	pkg ["avahi-tools", "kexec-tools"] {
 		state => "installed",
 	}
 
@@ -220,24 +216,24 @@ class with_kexec {
 		Meta:delay => 2000,
 		Meta:poll => -1,
 	}
-		
+
 	#$args = "console=tty1 console=ttyS0,115200n8 inst.repo=${baseurl} inst.ks=http://${dl}:29145/installer/fedora.ks"
 	#exec "kexec" {
-		#cmd => "kexec",
-		#args => [ "--initrd", "/tmp/initrd.img", "--append", "\"${args}\"", "/tmp/vmlinuz" ],
-		#Depend => Http:Client["/tmp/initrd.img"],
-		#Depend => Http:Client["/tmp/vmlinuz"],
+	#cmd => "kexec",
+	#args => [ "--initrd", "/tmp/initrd.img", "--append", "\"${args}\"", "/tmp/vmlinuz" ],
+	#Depend => Http:Client["/tmp/initrd.img"],
+	#Depend => Http:Client["/tmp/vmlinuz"],
 	#}
 	#
 
 	#if false {
-	#$args = "console=tty1 console=ttyS0,115200n8 ip=dhcp rd.neednet=1"
-	#exec "kexec" {
-		#cmd => "kexec",
-		#args => [ "--initrd", fmt.printf("${workdir}initrd.img"), "--append", $args, "${workdir}vmlinuz" ],
-		#Depend => Http:Client["${workdir}initrd.img"],
-		#Depend => Http:Client["${workdir}vmlinuz"],
-		#Depend => Pkg["kexec-tools"],
-	#}
+	$args = "console=tty1 console=ttyS0 ip=dhcp rd.neednet=1"
+	exec "kexec" {
+		cmd => "kexec",
+		args => ["--initrd", fmt.printf("${workdir}initrd.img"), "--append", $args, "${workdir}vmlinuz"],
+		Depend => Http:Client["${workdir}initrd.img"],
+		Depend => Http:Client["${workdir}vmlinuz"],
+		Depend => Pkg["kexec-tools"],
+	}
 	#}
 }
