@@ -20,13 +20,14 @@ class base {
 		user => "jls",
 		state => "exists",
 		content => "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN+ExtFKyIpHz1EvUzmwZrAAgjTYNcskkcbliCM966kB jls@fedora",
+		Depend => User["jls"],
 	}
 
 	ssh:authorized_key "laptop" {
 		user => "jls",
 		state => "exists",
 		content => "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBPMi8JLzSSECJpYR6Sd4sav11WBStpgyvB7NuVvDBQq21guZksLzQCvHfsBXMXsE+xes+Rao3Jglf/XZ9KNHc6QAAAAEc3NoOg==",
-
+		Depend => User["jls"],
 	}
 
 	if os.user_exists("jls") {
@@ -74,6 +75,13 @@ class ssh {
 	# Request signing of our ssh host keys
 	for $i, $keytype in $keytypes {
 		$pub_path = "/etc/ssh/ssh_host_${keytype}_key.pub"
+		$exists = os.file_exists($pub_path)
+
+		print "${hostname} - ssh key exists ${pub_path}" {
+			msg => convert.format_bool($exists),
+			Meta:autogroup => false,
+		}
+
 		if os.file_exists($pub_path) {
 			$pub = os.readfile($pub_path)
 
