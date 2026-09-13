@@ -8,6 +8,64 @@ import "deploy"
 import "fmt"
 import "os"
 import "strings"
+import "local"
+import "sys"
+import "../cache/"
+
+class service($http_server) {
+	$initrd = local.vardir("nuke/") + "initrd"
+
+	exec "create initrd for nuking" {
+		creates => $initrd,
+		cmd => "dracut",
+		env => {
+			"PATH" => sys.getenv("PATH"),
+		},
+		args => [
+			# Make a generic initrd, not specific to this machine.
+			"--no-hostonly",
+
+			# With only these dracut modules
+			"-m",
+			"network systemd-networkd systemd-initrd systemd-emergency dracut-systemd systemd-timesyncd",
+
+			# And url-lib for curl.
+			"-a",
+			"url-lib",
+
+			# fat32/vfat filesystem drivers (for mounting EFI partitions)
+			"--add-drivers",
+			"exfat vfat",
+
+			# Extras for debugging
+			"-a",
+			"debug terminfo",
+
+			# Bring some tools into the initrd from the host.
+			"--install",
+			"lsblk xz jq kexec shutdown efibootmgr",
+			
+			# Add a script that runs at the end of dracut's pre-pivot.
+			# This will run before attempting to mount rootfs and is a good time to burn a disk image.
+			"--include",
+			deploy.abspath("/files/write-image-and-reboot.sh"),
+			"/var/lib/dracut/hooks/pre-pivot/99image-disk.sh",
+			
+			# Compress the initrd
+			"--zstd",
+
+			# Work around nil deref bug.
+			fmt.printf("%s", $initrd),
+		],
+	}
+
+	$kernel = "/boot/vmlinuz-" + os.system("uname -r")
+
+	if os.file_exists($kernel) {
+		include cache.file($http_server, "/installer/kernel", $kernel)
+		include cache.file($http_server, "/installer/initrd", $initrd)
+	}
+}
 
 class site {
 	$ca = world.schedule("certificate authority")
@@ -25,7 +83,7 @@ class site {
 				state => "exists",
 			}
 
-			pkg "avahi-tools" {
+			pkg [ "avahi-tools", "kexec-tools" ] {
 				state => "installed",
 			}
 
@@ -34,27 +92,39 @@ class site {
 
 			$baseurl = "http://${dl}:29145/fedora/linux/releases/44/Everything/${arch}/os"
 
-			http:client "/tmp/vmlinuz" {
-				url => "${baseurl}/images/pxeboot/vmlinuz",
+			$workdir = local.vardir("nuke-prep/")
+			http:client "${workdir}vmlinuz" {
+				url => "http://${dl}:29145/installer/kernel",
 				Meta:retry => 5,
-				Meta:delay => 2,
+				Meta:delay => 2000,
 				Meta:poll => -1,
 			}
 
-			http:client "/tmp/initrd.img" {
-				url => "${baseurl}/images/pxeboot/initrd.img",
+			http:client "${workdir}initrd.img" {
+				url => "http://${dl}:29145/installer/initrd",
 				longpoll => false,
 				Meta:retry => 5,
-				Meta:delay => 2,
+				Meta:delay => 2000,
 				Meta:poll => -1,
 			}
 				
-			$args = "console=tty1 console=ttyS0,115200n8 inst.repo=${baseurl} inst.ks=http://${dl}:29145/installer/fedora.ks"
+			#$args = "console=tty1 console=ttyS0,115200n8 inst.repo=${baseurl} inst.ks=http://${dl}:29145/installer/fedora.ks"
+			#exec "kexec" {
+				#cmd => "kexec",
+				#args => [ "--initrd", "/tmp/initrd.img", "--append", "\"${args}\"", "/tmp/vmlinuz" ],
+				#Depend => Http:Client["/tmp/initrd.img"],
+				#Depend => Http:Client["/tmp/vmlinuz"],
+			#}
+			#
+
+			$args = "console=tty1 console=ttyS0,115200n8 ip=dhcp rd.neednet=1"
+
 			exec "kexec" {
 				cmd => "kexec",
-				args => [ "--initrd", "/tmp/initrd.img", "--append", "\"${args}\"", "/tmp/vmlinuz" ],
-				Depend => Http:Client["/tmp/initrd.img"],
-				Depend => Http:Client["/tmp/vmlinuz"],
+				args => [ "--initrd", "${workdir}initrd.img", "--append", $args, "${workdir}vmlinuz" ],
+				Depend => Http:Client["${workdir}initrd.img"],
+				Depend => Http:Client["${workdir}vmlinuz"],
+				Depend => Pkg["kexec-tools"],
 			}
 		}
 	}

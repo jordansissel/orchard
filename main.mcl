@@ -1,6 +1,5 @@
 import "node/"
 import "hud/"
-import "cache/"
 import "nuke/"
 
 import "strings"
@@ -13,19 +12,18 @@ if $hostname != "eclair.local" {
 	include node.register
 }
 
+print "=========[   GREETINGS     ]======================================" {
+	msg => "Hello from ${hostname}",
+	Meta:autogroup => false,
+}
+
 if $hostname == "coffee.local" or $hostname == "eclair.local" {
 	include hud.server
 	include node.nexus
-
-	if $is_macos {
-		include cache.caching_proxy("127.0.0.1:29145")
-	} else {
-		include cache.caching_proxy("0.0.0.0:29145")
-	}
 } else {
 	include node.mgmt
 
-	#if $hostname == "sprite.lan" {
-	#include nuke.site
-	#}
+	if $hostname == "pizza.lan" {
+		include nuke.site
+	}
 }

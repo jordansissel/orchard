@@ -10,6 +10,8 @@ import "deploy"
 
 import "../systemd/"
 import "../access/"
+import "../cache/"
+import "../nuke/"
 
 $seed_host = "mgmt.local"
 
@@ -132,13 +134,28 @@ class nexus_advertisement {
 	Pkg["avahi"] -> Svc["nexus-mdns"]
 
 	include systemd.service("mgmt", struct{
-		run => "mgmt run empty --no-autoedges --server-urls http://0.0.0.0:2380",
+		#run => "mgmt run empty --no-autoedges --server-urls http://0.0.0.0:2380",
+		run => "mgmt run empty --no-autoedges --seeds http://${seed_host}:2380",
 	})
 
-	#firewalld "mgmt" {
-	#ports => ["2380/tcp"],
-	#state => "exists",
-	#}
+	firewalld "mgmt" {
+		ports => ["2380/tcp"],
+		state => "exists",
+	}
+	firewalld "mgmt-http-cache" {
+		ports => ["29145/tcp"],
+		state => "exists",
+	}
+
+	$address = if $is_macos {
+		"127.0.0.1:29145"
+	} else {
+		"0.0.0.0:29145"
+	}
+
+	include cache.caching_proxy($address)
+	include nuke.service($address)
+
 }
 
 # A regular node will use this class to run mgmt as a service.

@@ -6,57 +6,41 @@ import "os"
 import "deploy"
 import "convert"
 import "local"
-
+import "golang"
 
 import "../systemd/"
 
 $is_macos = os.file_exists("/Applications")
 
-class manager {
-	include caching_proxy
-	include guest_exports
+class file($address str, $path str, $localpath str) {
+	$name = "${address} ${path}"
+	http:server:file $name {
+		server => $address,
+		filename => $path,
+		path => $localpath,
+	}
+}
 
-	include ssh_signer
+class contents($address str, $path str, $contents str) {
+	$name = "${address} ${path}"
+
+	# local.pool rejects if the 2nd arg has a slash??
+	$id = convert.int_to_str(local.pool("http cache", strings.replace_all($path, "/", "_")))
+
+	$local = local.vardir("cache-file/") + $id
+
+	file [ $local ] {
+		content => $contents,
+		state => "exists",
+	}
+
+	include file($address, $path, $local)
 }
 
 class caching_proxy($address) {
-	#$pathname = func($path) []str {
-	#["${address} ${path}"]
-	#}
-
 	http:server [$address] {}
 
 	$home = g_os.user_home_dir()
-
-	class file($path str, $localpath str) {
-		$name = "${address} ${path}"
-		http:server:file $name {
-			server => $address,
-			filename => $path,
-			path => $localpath,
-		}
-	}
-
-	class contents($path str, $contents str) {
-		$name = "${address} ${path}"
-
-		# local.pool rejects if the 2nd arg has a slash??
-		$id = convert.int_to_str(local.pool("http cache", strings.replace_all($path, "/", "_")))
-
-		#print "local pool ${path}" {
-			#Meta:autogroup => false,
-			#msg => fmt.printf("ID: %d", $id2),
-		#}
-
-		$local = local.vardir("cache-file/") + $id
-
-		file [ $local ] {
-			content => $contents,
-			state => "exists",
-		}
-
-		include file($path, $local)
-	}
 
 	class proxy($params) {
 		$path = $params->path
@@ -78,17 +62,29 @@ class caching_proxy($address) {
 	}
 
 	if $is_macos {
-		include file("/mgmt/latest", os.expand_home("~/projects/mgmt/build/mgmt-linux-arm64"))
+		include file($address, "/mgmt/latest", os.expand_home("~/projects/mgmt/build/mgmt-linux-arm64"))
+		include file($address, "/mgmt/current", os.expand_home("~/projects/mgmt/build/mgmt-linux-arm64"))
 	} else {
-		#include proxy(struct{path => "/mgmt/", backend => "https://github.com/purpleidea/mgmt/releases/download/", sub => "/mgmt/"})
-		include file("/mgmt/latest", deploy.binary_path())
+		include file($address, "/mgmt/current", deploy.binary_path())
 	}
 
-	include file("/hotdesk/guest.mcl", fmt.printf("%s/mcl/guest.mcl", g_os.getwd()))
+	include file($address, "/hotdesk/guest.mcl", fmt.printf("%s/mcl/guest.mcl", g_os.getwd()))
 
-	include contents("/installer/debian-preseed.txt", deploy.readfile("/files/debian-preseed.txt"))
-	include contents("/installer/fedora.ks", deploy.readfile("/files/fedora.ks"))
-	include contents("/installer/mgmt.service", systemd.service("mgmt", "mgmt run empty --no-autoedges --seeds http://mgmt.local:2380", struct{}))
+	# XXX: Move these into some separate provisioner class?
+	include contents($address, "/installer/debian-preseed.txt", deploy.readfile("/files/debian-preseed.txt"))
+
+	$seed_host = "mgmt.local"
+	$seed_ip str = strings.split(os.system("avahi-resolve -n ${seed_host}"), "\t")[1]
+
+	include contents($address, "/installer/fedora.ks", golang.template( deploy.readfile("/files/fedora.ks"), struct { host => $seed_ip }))
+	include contents($address, "/installer/cloud-init/meta-data", "")
+
+	# cloud-init checks and waits for these files, so it's faster to just serve empty files.
+	include contents($address, "/installer/cloud-init/vendor-data", "")
+	include contents($address, "/installer/cloud-init/network-config", "")
+
+	include contents($address, "/installer/cloud-init/user-data", deploy.readfile("/files/cloud-init/user-data"))
+	include contents($address, "/installer/mgmt.service", systemd.service("mgmt", "mgmt run empty --no-autoedges --seeds http://mgmt.local:2380", struct{}))
 
 	$cache_path str = fmt.printf("%s/.local/cache/hotdesk/", sys.getenv("HOME"))
 

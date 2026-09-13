@@ -1,16 +1,18 @@
-text
+graphical
 
-bootloader --location mbr --append="console=tty1 console=ttyS0,115200"
 # XXX: How to know what the drive names are?
 # XXX: use a %pre script?
-clearpart --all --drives=nvme0n1
-#clearpart --all --drives=vda
+clearpart --all --drives=vda|sda|nvme0n1
 lang en_US.UTF-8
+keyboard --vckeymap us --xlayouts us
+timezone America/Los_Angeles
+
 autopart --type=plain
+bootloader --location mbr --append="console=tty1 console=ttyS0,115200n8"
 
 rootpw dev
 
-#firewall --enabled --ssh
+firewall --enabled --ssh
 
 #user --name dev --password dev  --plaintext 
 
@@ -27,17 +29,16 @@ avahi
 nss-mdns
 
 # also for mgmt, even though I don't use these libs.
-augeas
-libvirt
+augeas-libs
+libvirt-libs
 %end
 
 %post
+# Installation assets are hosted by {{ .Host }}
 
-SYSROOT=/mnt/sysroot
-cd /mnt/sysroot
+curl -o "/usr/local/bin/mgmt" "http://{{ .Host }}:29145/mgmt/current"
+chmod 755 /usr/local/bin/mgmt
 
-curl -o "usr/local/bin/mgmt" "http://192.168.12.100:29145/mgmt/1.1.0/mgmt-linux-amd64-1.1.0"
-chmod 755 usr/local/bin/mgmt
-curl -o etc/systemd/system/mgmt.service "http://192.168.12.100:29145/installer/mgmt.service"
-
+curl -o /etc/systemd/system/mgmt.service "http://{{ .Host }}:29145/installer/mgmt.service"
+systemctl enable mgmt
 %end
