@@ -55,7 +55,7 @@ dhcp
 echo 
 
 # Start installer
-kernel \${repo}/images/pxeboot/vmlinuz inst.repo=\${repo} -- console=/dev/tty1 console=/dev/ttyAMA0,115200n8
+kernel \${repo}/images/pxeboot/vmlinuz inst.repo=\${repo} -- console=tty1 console=ttyAMA0,115200n8
 initrd \${repo}/images/pxeboot/initrd.img
 shim ${repo}/EFI/BOOT/BOOTX64.EFI
 
