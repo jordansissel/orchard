@@ -20,6 +20,7 @@ class service($http_server) {
 	file [$write] {
 		content => deploy.readfile("/files/write-image-and-reboot.sh"),
 		state => "exists",
+		Notify => Exec["create initrd for nuking"],
 	}
 
 	exec "create initrd for nuking" {
