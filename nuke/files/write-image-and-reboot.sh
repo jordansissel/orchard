@@ -19,9 +19,24 @@ curl "$url" | xz -dc > "/dev/${disk}"
 
 # fedora cloud images use partition 3 for the main filessystem
 mkdir /mnt
-mount /dev/${disk}3 /mnt
 
+# Fedora 44's Cloud image uses gpt and gpt requires(?) that the "gpt alternate header" live at the end of the physical disk.
+# Because the Cloud image is only a few hundred megabytes, this means the
+# image's alt header is at the end of the disk image, but not the physical
+# disk.
+# We can insist parted correct this for us (-sf flag) while also extending the partition to the end of the disk.
+#
+# In the absence of this specific fix, the kernel will panic when it tries to mount this disk as the root filesystem.
+parted -sf /dev/${disk} resizepart 3 100%
+
+partition=/dev/${disk}3
+	
+if [ -z "${disk##nvme*}" ] ; then
+	partition=/dev/${disk}p3
+fi
+
+mount -o ro $partition /mnt
 kernel="$(ls -t /mnt/boot/vmlinuz* | sed -ne 1p)"
 version="${kernel#*vmlinuz-}"
 
-kexec --initrd "/mnt/boot/initramfs-$version.img" --append "root=/dev/${disk}3 rootflags=subvol=root console=tty1 console=ttyS0,115200n8 ds=nocloud;s=http://192.168.12.100:29145/installer/cloud-init/" "$kernel" 
+kexec --initrd "/mnt/boot/initramfs-$version.img" --append "root=${partition} rootflags=subvol=root console=tty1 console=ttyS0,115200n8 ds=nocloud;s=http://192.168.12.100:29145/installer/cloud-init/" "$kernel" 
