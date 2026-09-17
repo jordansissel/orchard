@@ -3,6 +3,7 @@ import "local"
 import "world"
 import "os"
 import "convert"
+import "deploy"
 import "world/collect"
 import "iter"
 
@@ -99,6 +100,11 @@ class ssh {
 				func($st) { $st->name == $cert },
 			)
 
+				print "ssh collecting signed certs type '${keytype}'" {
+					msg => fmt.printf("%v", $cert_file),
+					Meta:autogroup => false,
+				}
+
 			collect file $cert_file {
 				Meta:hidden => false,
 				Before => File["/etc/ssh/sshd_config.d/99-certificate-${keytype}.conf"],
@@ -130,7 +136,6 @@ class ca {
 class ca_elected {
 	password "ssh ca passphrase" {
 		length => 32,
-		#saved => true,
 	}
 
 	# XXX: A password() function would be nice.
@@ -144,6 +149,11 @@ class ca_elected {
 	$ssh_ca = $ssh_ca_dir + "ca.key"
 
 	if $passphrase->ready {
+		print "passwordAAA" {
+			msg => fmt.printf("Password: %s", $passphrase->value),
+			Meta:autogroup => false,
+		}
+
 		exec "create ssh certificate authority" {
 			cmd => "ssh-keygen",
 			args => ["-f", $ssh_ca, "-C", "The Orchard", "-N", $passphrase->value],
@@ -157,6 +167,11 @@ class ca_elected {
 			}
 
 			for $i, $keytype in $keytypes {
+				print "ssh scanning for exported keys type '${keytype}'" {
+					msg => "OK",
+					Meta:autogroup => false,
+				}
+
 				forkv $host, $pub in world.kvlookup("ssh/${keytype}") {
 					$path = "${ssh_ca_dir}${host}.${keytype}"
 					$cert = "${path}-cert.pub"
@@ -172,15 +187,26 @@ class ca_elected {
 						state => "exists",
 					}
 
+					file "/usr/local/bin/sign.expect" {
+						content => deploy.readfile("/files/sign.expect"),
+						state => "exists",
+					}
+
+					pkg "expect" {
+						state => "installed",
+					}
 					# Sign $pub and then send value back to the host
 					$exec = "sign ${host} ssh key ${keytype}"
 
 					exec $exec {
-						cmd => "ssh-keygen",
-						args => ["-s", $ssh_ca, "-h", "-I", $host, "-i", $host, "-P", $passphrase->value, $path],
+						#cmd => "ssh-keygen",
+						#args => ["-s", $ssh_ca, "-h", "-I", $host, "-i", $host, "-P", $passphrase->value, $path],
+						cmd => "sudo",
+						args => [ "expect", "/usr/local/bin/sign.expect", $path, $ssh_ca, $host, $passphrase->value ],
 						creates => $cert,
 						Depend => Exec["create ssh certificate authority"],
 						Depend => File[$path],
+						Depend => Pkg["expect"],
 					}
 
 					if os.file_exists($cert) {
