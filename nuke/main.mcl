@@ -97,6 +97,42 @@ class service($http_server) {
 		filename => "/installer/BOOTX64.efi",
 		path => $shim,
 	}
+
+	tftp:server ":69" {
+	}
+
+	$tftpshim = "shim.efi"
+	tftp:file "/${tftpshim}" {
+		path => $shim,
+	}
+
+	tftp:file "grubx64.efi" {
+		path => $x86_64,
+	}
+
+	firewalld "dhcp" {
+		ports => ["67/udp"],
+		state => "exists",
+	}
+
+	firewalld "tftp" {
+		ports => ["69/udp", "69/tcp"],
+		state => "exists",
+	}
+
+	dhcp:server ":67" {
+		interface => "wlp0s20f0u7",
+		leasetime => "60s",
+		dns => [ "192.168.12.1" ],
+		routers => [ "192.168.12.1" ],
+	}
+
+	#dhcp:host "hp1" {
+		#mac => "5c:60:ba:d9:16:25",
+		#ip => "192.168.12.50/24",
+		#nbp => "tftp://192.168.12.100/${tftpshim}",
+	#}
+
 }
 
 class site {
