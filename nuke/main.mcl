@@ -120,12 +120,12 @@ class service($http_server) {
 		state => "exists",
 	}
 
-	dhcp:server ":67" {
-		interface => "wlp0s20f0u7",
-		leasetime => "60s",
-		dns => [ "192.168.12.1" ],
-		routers => [ "192.168.12.1" ],
-	}
+	#dhcp:server ":67" {
+		#interface => "wlp0s20f0u7",
+		#leasetime => "60s",
+		#dns => [ "192.168.12.1" ],
+		#routers => [ "192.168.12.1" ],
+	#}
 
 	#dhcp:host "hp1" {
 		#mac => "5c:60:ba:d9:16:25",
