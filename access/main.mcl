@@ -136,6 +136,7 @@ class ca {
 class ca_elected {
 	password "ssh ca passphrase" {
 		length => 32,
+		write => true,
 	}
 
 	# XXX: A password() function would be nice.
