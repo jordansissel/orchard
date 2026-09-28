@@ -20,10 +20,11 @@ print "=========[   GREETINGS     ]======================================" {
 if $hostname == "coffee.local" or $hostname == "eclair.local" {
 	include hud.server
 	include node.nexus
+
 } else {
 	include node.mgmt
 
-	if $hostname == "fedora-44-gnome" {
-		include nuke.site
-	}
+	#if $hostname == "fedora-44-gnome" {
+		#include nuke.site
+	#}
 }
