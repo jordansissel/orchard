@@ -48,7 +48,8 @@ class server {
 		state => "exists",
 	}
 
-	$entries = strings.join_nonempty(iter.map(map.keys($uuid), $jsonblob), ",\n")
+	$nodes = world.schedule("node")
+	$entries = strings.join_nonempty(iter.map($nodes, $jsonblob), ",\n")
 	$json = fmt.printf("{\n%s\n}", $entries)
 
 	http:server:file "/" {

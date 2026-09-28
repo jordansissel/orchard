@@ -37,9 +37,25 @@ class register {
 	$cpu = cpu_info()
 	$mem = mem_info()
 
+	schedule "node" {
+		max => 1000,
+	}
+
+
+
 	kv "uuid" {
 		mapped => true,
 		value => $uuid,
+	}
+
+	$serial = strings.trim_space(os.readfile("/sys/devices/virtual/dmi/id/product_serial")) <|> ""
+	if $serial != "" {
+		hostname $serial { }
+
+		kv "serial" {
+			mapped => true,
+			value => $serial,
+		}
 	}
 
 	if os.file_exists("/etc/machine-id") {
@@ -76,16 +92,12 @@ class register {
 		mapped => true,
 		value => golang.template("{{ .Id }} {{ .Variant_id }} {{ .Version_id }}", os.release()),
 	}
+}
 
-	#kv "uptime" {
-	#mapped => true,
-	#value => golang.template("{{ . }}", sys.uptime()),
-	#}
-
-	#kv "load" {
-	#mapped => true,
-	#value => golang.template("{{ .X1 }}", sys.load()),
-	#}
+class monitor {
+	pkg ["smartmontools", "pciutils", "lm_sensors"] {
+		state => "installed",
+	}
 }
 
 # A nexus is a service that shall run a central mgmt node with etcd.
