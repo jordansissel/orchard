@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 ExecStart=
 ip --json route | jq -r '.[] | select(.dst == "default") | .prefsrc'
-avahi-publish -R -a mgmt.local 192.168.12.100
+avahi-publish -R -a mgmt.local 192.168.12.86
 
 [Install]
 WantedBy=multi-user.target
