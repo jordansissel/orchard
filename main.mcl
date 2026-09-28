@@ -10,6 +10,7 @@ $is_macos = os.file_exists("/Applications")
 
 if $hostname != "eclair.local" {
 	include node.register
+	include node.monitor
 }
 
 print "=========[   GREETINGS     ]======================================" {
