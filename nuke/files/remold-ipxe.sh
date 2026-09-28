@@ -1,6 +1,6 @@
 #!/bin/sh
 
-dl="192.168.12.100"
+dl="192.168.12.86"
 
 curl --retry 10 --retry-all-errors --retry-delay 3 \
 	-o /boot/efi/EFI/ipxe.efi "http://${dl}:29145/installer/ipxe-x86_64.efi"

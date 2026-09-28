@@ -130,7 +130,7 @@ class service($http_server) {
 	#dhcp:host "hp1" {
 		#mac => "5c:60:ba:d9:16:25",
 		#ip => "192.168.12.50/24",
-		#nbp => "tftp://192.168.12.100/${tftpshim}",
+		#nbp => "tftp://192.168.12.86/${tftpshim}",
 	#}
 
 }
@@ -164,7 +164,7 @@ class with_ipxe {
 
 class with_ipxe_old {
 	$ipxe_tmp = local.vardir("nuke-prep/") + "ipxe.efi"
-	$dl = "192.168.12.100"
+	$dl = "192.168.12.86"
 
 	#http:client [ $ipxe_tmp ] {
 	#url => "http://${dl}:29145/installer/ipxe-x86_64.efi",
@@ -227,7 +227,7 @@ class with_ipxe_old {
 
 class with_kexec {
 	#$dl = strings.trim_space(os.system("getent hosts mgmt.local | awk '{print $1}'"))
-	$dl = "192.168.12.100"
+	$dl = "192.168.12.86"
 
 	pkg ["avahi-tools", "kexec-tools"] {
 		state => "installed",
