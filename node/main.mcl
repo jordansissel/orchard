@@ -41,8 +41,6 @@ class register {
 		max => 1000,
 	}
 
-
-
 	kv "uuid" {
 		mapped => true,
 		value => $uuid,
@@ -97,6 +95,33 @@ class register {
 class monitor {
 	pkg ["smartmontools", "pciutils", "lm_sensors"] {
 		state => "installed",
+	}
+}
+
+class basics {
+	# Because Fedora Cloud image doesn't ship this by default
+	# and it includes the i915 video driver.
+	#$kernel = strings.trim_space(os.system("uname -r"))
+	pkg "kernel-modules" {
+		#state => "${kernel}",
+		# Hardcode the version number for now because mgmt reports an error when I
+		# attempt to use the `uname -r` value in a variable like this...
+		state => "6.19.10-300.fc44",
+	}
+
+	if os.file_exists("/usr/bin/dmidecode") {
+		$vendor = strings.trim_space(os.system("dmidecode -s system-manufacturer"))
+
+		if $vendor == "HP" {
+			#file "/etc/modules-load.d/hp_bioscfg.conf" {
+				#content => "hp_bioscfg\n",
+				#state => "exists",
+			#}
+			#file "/etc/modules-load.d/i915.conf" {
+				#content => "i915\n",
+				#state => "exists",
+			#}
+		}
 	}
 }
 
