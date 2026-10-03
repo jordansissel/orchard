@@ -14,7 +14,7 @@ $is_macos = os.file_exists("/Applications")
 class base {
 	user "jls" {
 		state => "exists",
-		groups => ["wheel"],
+		groups => ["wheel", "video"],
 	}
 
 	ssh:authorized_key "workstation" {
