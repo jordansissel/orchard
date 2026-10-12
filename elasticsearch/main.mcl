@@ -1,0 +1,20 @@
+import "../systemd/"
+import "os"
+import "deploy"
+
+$default_version = "9.5.4"
+
+class server($version) {
+	$repo_file = "/etc/yum.repos.d/elasticsearch.repo"
+	file [$repo_file] {
+		content => deploy.readfile("/files/elasticsearch.repo"),
+		state => "exists",
+	}
+
+	if os.file_exists($repo_file) {
+		pkg "elasticsearch" {
+			state => "${version}-1",
+			Depend => File[$repo_file],
+		}
+	}
+}

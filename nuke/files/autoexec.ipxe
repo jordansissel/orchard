@@ -15,9 +15,13 @@ echo ${cmdline}
 dhcp
 
 echo Booting... with: ${cmdline}
+# XXX: Try this again, see what fails. If it fails, uncomment imgfree
+# For more details, blame @purpleidea: https://github.com/ipxe/ipxe/issues/1390
+#imgfree
 shim http://${dlhost}:29145/installer/BOOTX64.efi
 initrd http://${dlhost}:29145/installer/initrd
 kernel http://${dlhost}:29145/installer/kernel ${cmdline}
+
 
 boot
 
