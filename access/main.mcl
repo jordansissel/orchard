@@ -17,6 +17,10 @@ class base {
 		groups => ["wheel", "video"],
 	}
 
+	user "dev" {
+		state => "exists",
+	}
+
 	ssh:authorized_key "workstation" {
 		user => "jls",
 		state => "exists",
