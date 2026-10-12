@@ -104,10 +104,10 @@ class ssh {
 				func($st) { $st->name == $cert },
 			)
 
-				print "ssh collecting signed certs type '${keytype}'" {
-					msg => fmt.printf("%v", $cert_file),
-					Meta:autogroup => false,
-				}
+			print "ssh collecting signed certs type '${keytype}'" {
+				msg => fmt.printf("%v", $cert_file),
+				Meta:autogroup => false,
+			}
 
 			collect file $cert_file {
 				Meta:hidden => false,
@@ -207,7 +207,7 @@ class ca_elected {
 						#cmd => "ssh-keygen",
 						#args => ["-s", $ssh_ca, "-h", "-I", $host, "-i", $host, "-P", $passphrase->value, $path],
 						cmd => "sudo",
-						args => [ "expect", "/usr/local/bin/sign.expect", $path, $ssh_ca, $host, $passphrase->value ],
+						args => ["expect", "/usr/local/bin/sign.expect", $path, $ssh_ca, $host, $passphrase->value],
 						creates => $cert,
 						Depend => Exec["create ssh certificate authority"],
 						Depend => File[$path],

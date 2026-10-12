@@ -48,7 +48,7 @@ class register {
 
 	$serial = strings.trim_space(os.readfile("/sys/devices/virtual/dmi/id/product_serial")) <|> ""
 	if $serial != "" {
-		hostname $serial { }
+		hostname $serial {}
 
 		kv "serial" {
 			mapped => true,
@@ -113,12 +113,12 @@ class basics {
 
 		if $vendor == "HP" {
 			#file "/etc/modules-load.d/hp_bioscfg.conf" {
-				#content => "hp_bioscfg\n",
-				#state => "exists",
+			#content => "hp_bioscfg\n",
+			#state => "exists",
 			#}
 			#file "/etc/modules-load.d/i915.conf" {
-				#content => "i915\n",
-				#state => "exists",
+			#content => "i915\n",
+			#state => "exists",
 			#}
 		}
 	}
@@ -170,7 +170,6 @@ class nexus_advertisement {
 	Pkg["avahi"] -> Svc["nexus-mdns"]
 
 	include systemd.service("mgmt", struct{
-		#run => "mgmt run empty --no-autoedges --server-urls http://0.0.0.0:2380",
 		run => "mgmt run empty --no-autoedges --seeds http://${seed_host}:2380",
 	})
 
@@ -178,6 +177,7 @@ class nexus_advertisement {
 		ports => ["2380/tcp"],
 		state => "exists",
 	}
+
 	firewalld "mgmt-http-cache" {
 		ports => ["29145/tcp"],
 		state => "exists",

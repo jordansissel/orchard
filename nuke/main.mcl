@@ -98,8 +98,7 @@ class service($http_server) {
 		path => $shim,
 	}
 
-	tftp:server ":69" {
-	}
+	tftp:server ":69" {}
 
 	$tftpshim = "shim.efi"
 	tftp:file "/${tftpshim}" {
@@ -129,10 +128,10 @@ class service($http_server) {
 
 	#dhcp:host "hp1" {
 		#mac => "5c:60:ba:d9:16:25",
+		#mac => "48:9e:bd:4d:01:90",
 		#ip => "192.168.12.50/24",
 		#nbp => "tftp://192.168.12.86/${tftpshim}",
 	#}
-
 }
 
 class site {
