@@ -176,6 +176,13 @@ class desktop($kind str) {
 		# but I don't want it popping up every time I login.
 		# 
 		# XXX: How to disable gnome-tour?
+		
+		# Disable idle suspend
+		gsettings "org.gnome.desktop.session idle-delay" {
+			type => "int",
+			value => 0,
+			user => "dev",
+		}
 	}
 
 	if $kind == "niri" {
