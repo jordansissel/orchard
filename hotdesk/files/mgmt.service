@@ -1,0 +1,11 @@
+
+[Unit]
+Description=Mount the virtfs workdir if available.
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=mgmt run empty --no-autoedges --seeds http://10.0.2.2:2380
+
+[Install]
+WantedBy=multi-user.target

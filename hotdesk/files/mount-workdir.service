@@ -1,0 +1,11 @@
+[Unit]
+Description=mgmt
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=sh /usr/local/bin/mount-workdir.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

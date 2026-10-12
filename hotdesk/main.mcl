@@ -1,0 +1,272 @@
+import "os"
+import "deploy"
+import "strings"
+import "iter"
+import "sys"
+import "fmt"
+import "list"
+import "golang/strings" as golang_strings
+import "world"
+import "convert"
+
+$osinfo = os.release()
+
+# A rose by any other name... everybody likes to call packages by different names.
+# And why not? Why shouldn't we all use slightly different names to refer to exactly the same item.
+$rose struct{package struct{desktop map{str: str}; gdm str; ssh str}; service struct{ssh str}; paths struct{gdm_config str}} = {
+	"fedora" => struct{
+		package => struct{
+			desktop => {
+				"gnome" => "gnome-desktop4",
+				"kde" => "plasma-desktop",
+				"cosmic" => "cosmic-session",
+			},
+			gdm => "gdm",
+			ssh => "openssh-server",
+		},
+		service => struct{
+			ssh => "sshd",
+		},
+		paths => struct{
+			gdm_config => "/etc/gdm/custom.conf",
+		},
+	},
+	"ubuntu" => struct{
+		package => struct{
+			desktop => {
+				"gnome" => "ubuntu-gnome-desktop",
+				"kde" => "kde-plasma-desktop",
+			},
+			gdm => "gdm3",
+			ssh => "openssh-server",
+		},
+		service => struct{
+			ssh => "ssh",
+		},
+		paths => struct{
+			gdm_config => "/etc/gdm3/custom.conf",
+		},
+	},
+	"debian" => struct{
+		package => struct{
+			desktop => {
+				"gnome" => "gnome",
+				"kde" => "kde-plasma-desktop",
+			},
+			gdm => "gdm3",
+			ssh => "openssh-server",
+		},
+		service => struct{
+			ssh => "ssh",
+		},
+		paths => struct{
+			gdm_config => "/etc/gdm3/daemon.conf",
+		},
+	},
+	"arch" => struct{
+		package => struct{
+			desktop => {
+				"gnome" => "gnome-initial-setup",
+				"kde" => "plasma-meta",
+				"niri" => "niri",
+			},
+			gdm => "gdm",
+			ssh => "openssh",
+		},
+		service => struct{
+			ssh => "sshd",
+		},
+		paths => struct{
+			gdm_config => "/etc/gdm/custom.conf",
+		},
+	},
+}[$osinfo->id]
+
+class pkg_install($packages []str) {
+	pkg $packages {
+		# On Ubuntu (and maybe elsewhere), Packagekit marks certain packages as "unsupported" ?
+		# Ubuntu's qemu-guest-agent, kde-plasma-desktop, etc, all will be  "not found" by mgmt
+		# if the allowunsupported is the default (false) value.
+		# This seems to correlate with Ubuntu package 'Section' fields prefixed with 'universe/'
+		allowunsupported => true,
+
+		state => "installed",
+		Before => Noop["complete"],
+		Meta:retry => 5,
+		Meta:delay => 1,
+	}
+}
+
+class base {
+	# XXX: Do a workaround on Debian and Ubuntu systems:
+	# Reference> https://www.dedoimedo.com/computers/ubuntu-network-online-offline.html
+	#
+	# NetworkManager installs with GNOME + GDM, and it interferes with
+	# Debian+Ubuntu's network stack, netplan.
+	#
+	# To fix this, we tell netplan to generate(?) NetworkManager:
+	# generate netplan file with
+	# Put a file: /etc/netplan/01-networkmanager.yaml
+	#   network: { version: 2, renderer: NetworkManager }
+	# Then 'sudo netplan generate'
+	# sudo netplan apply
+	# systemctl restart NetworkManager
+	#
+	# and now packagekit should work.
+	# 
+	# PR submitted for this: https://github.com/PackageKit/PackageKit/pull/980
+	print "osinfo" {
+		msg => fmt.printf("OSINFO: %v", $osinfo),
+	}
+
+	if $osinfo->id == "debian" and convert.str_to_int($osinfo->version_id) > 11 {
+		# Debian 12+13 uses netplan, but when installing NetworkManger 
+		# does not configure netplan to use NetworkManager.
+		include networkmanager_workaround
+	}
+	if $osinfo->id == "ubuntu" {
+		include networkmanager_workaround
+	}
+
+	if os.is_virtual() {
+		include pkg_install(["qemu-guest-agent", "spice-vdagent"])
+
+		svc "spice-vdagentd" {
+			startup => "enabled",
+			state => "running",
+			Depend => Pkg["spice-vdagent"],
+		}
+	}
+
+	include pkg_install([$rose->package->ssh])
+	svc [$rose->service->ssh] {
+		startup => "enabled",
+		Before => Noop["complete"],
+	}
+
+	Pkg[[$rose->package->ssh]] -> Svc[[$rose->service->ssh]]
+}
+
+class desktop($kind str) {
+	noop "complete" {}
+
+	# This pkg intermediate variable only exists to help mgmt's type unifier
+	# learn that $rose->package->desktop is a map{str: str}, otherwise
+	# when I look up an entry in that map, it's "ambiguous" and aborts.
+	$pkg map{str: str} = $rose->package->desktop
+
+	$desktop_package = $pkg[$kind]
+
+	if $osinfo->id == "debian" and $osinfo->version_id == "11" {
+		include pkg_install(["kitty"])
+	} else {
+		include pkg_install(["ptyxis"])
+	}
+
+	$packages = [
+		"accountsservice", # For configuring a user's default graphical session
+		$desktop_package,
+		$rose->package->gdm,
+	]
+
+	include pkg_install($packages)
+
+	if $kind == "gnome" {
+		# gnome-tour is automatically installed as a part of gnome-desktop
+		# but I don't want it popping up every time I login.
+		# 
+		# XXX: How to disable gnome-tour?
+	}
+
+	if $kind == "niri" {
+		if $osinfo->id == "arch" {
+			pkg ["alacritty", "dms-shell-niri", "xdg-desktop-portal-gnome", "xdg-desktop-portal-gtk", "xwayland-satellite"] {
+				state => "installed",
+				Meta:retry => 5,
+				Meta:delay => 1,
+			}
+		}
+	}
+
+	svc "gdm" {
+		startup => "enabled",
+		state => "running",
+		Before => Noop["complete"],
+	}
+
+	# Gnome installs NetworkManager which conflicts, sorta, with systemd-networkd.
+	# If I don't do this, systemd-networkd will block booting for 2 minutes doing nothing
+	#svc "systemd-networkd-wait-online" {
+	#startup => "disabled",
+	#state => "stopped",
+	#Depend => Pkg[$desktop_package],
+	#}
+
+	# Configure gdm to automatically login as a given user
+	# It's fun how each distro seems to put this gdm config file in a different place.
+	file [$rose->paths->gdm_config] {
+		content => "[daemon]\nAutomaticLoginEnable=True\nAutomaticLogin=dev\n",
+		Before => Noop["complete"],
+	}
+
+	# Set default gdm session type
+	# The name of the GDM session
+	$session str = {
+		"gnome" => "gnome",
+		"kde" => "plasma",
+		"cosmic" => "cosmic",
+		"niri" => "niri",
+	}[$kind]
+
+	file "/var/lib/AccountsService/users/dev" {
+		content => fmt.printf("[User]\nSession=%s\n", $session),
+		state => "exists",
+		Before => Noop["complete"],
+	}
+
+	# Tell systemd to boot to graphical
+	exec ["visualize success"] {
+		cmd => "systemctl",
+		args => ["set-default", "graphical.target"],
+		Before => Noop["complete"],
+	}
+
+	Pkg[[$rose->package->gdm]] -> Svc["gdm"]
+	Pkg[[$rose->package->gdm]] -> Exec["visualize success"]
+	Pkg[[$rose->package->gdm]] -> File[[$rose->paths->gdm_config]]
+	Pkg["accountsservice"] -> File["/var/lib/AccountsService/users/dev"]
+}
+
+class networkmanager_workaround {
+	file "/etc/netplan/01-network-manager.yaml" {
+		state => "exists",
+		content => fmt.printf("network:\n  version: 2\n  renderer: NetworkManager\n"),
+		mode => "0600",
+	}
+
+	include pkg_install(["network-manager"])
+
+	exec "netplan generate" {
+		cmd => "netplan",
+		args => ["generate"],
+		mtimes => ["/etc/netplan/01-network-manager.yaml", "/usr/bin/nmcli"],
+		ifcmd => "test -f /usr/bin/nmcli -a -f /usr/lib/systemd/system/NetworkManager.service",
+		Depend => Pkg["network-manager"],
+	}
+
+	exec "netplan apply" {
+		cmd => "netplan",
+		args => ["apply"],
+		mtimes => ["/etc/netplan/01-network-manager.yaml", "/usr/bin/nmcli"],
+		ifcmd => "test -f /usr/bin/nmcli -a -f /usr/lib/systemd/system/NetworkManager.service",
+
+		Depend => Exec["netplan generate"],
+		Notify => Svc["NetworkManager"],
+		Meta:retry => 5,
+		Meta:delay => 1,
+	}
+
+	svc "NetworkManager" {
+		state => "running",
+	}
+}
