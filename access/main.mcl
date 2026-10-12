@@ -154,11 +154,6 @@ class ca_elected {
 	$ssh_ca = $ssh_ca_dir + "ca.key"
 
 	if $passphrase->ready {
-		print "passwordAAA" {
-			msg => fmt.printf("Password: %s", $passphrase->value),
-			Meta:autogroup => false,
-		}
-
 		exec "create ssh certificate authority" {
 			cmd => "ssh-keygen",
 			args => ["-f", $ssh_ca, "-C", "The Orchard", "-N", $passphrase->value],
@@ -197,9 +192,6 @@ class ca_elected {
 						state => "exists",
 					}
 
-					pkg "expect" {
-						state => "installed",
-					}
 					# Sign $pub and then send value back to the host
 					$exec = "sign ${host} ssh key ${keytype}"
 
@@ -211,7 +203,13 @@ class ca_elected {
 						creates => $cert,
 						Depend => Exec["create ssh certificate authority"],
 						Depend => File[$path],
-						Depend => Pkg["expect"],
+					}
+
+					if not $is_macos {
+						pkg "expect" {
+							state => "installed",
+						}
+						Pkg["expect"] -> Exec[$exec]
 					}
 
 					if os.file_exists($cert) {
