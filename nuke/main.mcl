@@ -105,33 +105,38 @@ class service($http_server) {
 		path => $shim,
 	}
 
-	tftp:file "grubx64.efi" {
+	tftp:file "/autoexec.ipxe" {
+		data => deploy.readfile("/files/autoexec.ipxe"),
+	}
+
+	tftp:file "/grubx64.efi" {
 		path => $x86_64,
 	}
 
-	#firewalld "dhcp" {
-	#ports => ["67/udp"],
-	#state => "exists",
-	#}
+	firewalld "dhcp" {
+		ports => ["67/udp"],
+		state => "exists",
+	}
+	firewalld "dhcp-proxy" {
+		ports => ["4011/udp"],
+		state => "exists",
+	}
 
-	#firewalld "tftp" {
-	#ports => ["69/udp", "69/tcp"],
-	#state => "exists",
-	#}
+	dhcp:server ":67" {
+		interface => "eno1",
+		leasetime => "60s",
+		dns => [ "192.168.12.1" ],
+		routers => [ "192.168.12.1" ],
+	}
 
-	#dhcp:server ":67" {
-	#interface => "eno1",
-	#leasetime => "60s",
-	#dns => [ "192.168.12.1" ],
-	#routers => [ "192.168.12.1" ],
-	#}
-
-	#dhcp:host "hp1" {
-	#mac => "5c:60:ba:d9:16:25",
-	#mac => "48:9e:bd:4d:01:90",
-	#ip => "192.168.12.50/24",
-	#nbp => "tftp://192.168.12.86/${tftpshim}",
-	#}
+	dhcp:host "hp1" {
+		#mac => "5c:60:ba:d9:16:25",
+		mac => "48:9e:bd:4d:01:90",
+		proxy => true,
+		#ip => "192.168.12.50/24",
+		nbp => "tftp://192.168.12.86/${tftpshim}",
+		ipxe => "http://192.168.12.86:29145/installer/autoexec.ipxe",
+	}
 }
 
 class site {
@@ -262,8 +267,7 @@ class with_kexec {
 	#}
 	#
 
-	#if false {
-	$args = "console=tty1 console=ttyS0 ip=dhcp rd.neednet=1"
+	$args = "console=tty0 console=ttyS0 ip=dhcp rd.neednet=1"
 	exec "kexec" {
 		cmd => "kexec",
 		args => ["--initrd", fmt.printf("${workdir}initrd.img"), "--append", $args, "${workdir}vmlinuz"],
@@ -271,5 +275,4 @@ class with_kexec {
 		Depend => Http:Client["${workdir}vmlinuz"],
 		Depend => Pkg["kexec-tools"],
 	}
-	#}
 }
