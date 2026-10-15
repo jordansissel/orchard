@@ -136,20 +136,36 @@ class base {
 			state => "running",
 			Depend => Pkg["spice-vdagent"],
 		}
+
+		file "/usr/local/bin/mount-workdir.sh" {
+			content => deploy.readfile("/files/mount-workdir.sh"),
+			state => "exists",
+			Before => Svc["mount-workdir"],
+		}
+
+		file "/etc/systemd/system/mount-workdir.service" {
+			content => deploy.readfile("/files/mount-workdir.service"),
+			state => "exists",
+			Before => Svc["mount-workdir"],
+		}
+
+		svc "mount-workdir" {
+			startup => "enabled",
+		}
 	}
 
-	include pkg_install([$rose->package->ssh])
-	svc [$rose->service->ssh] {
-		startup => "enabled",
-		Before => Noop["complete"],
-	}
+	# XXX Fix conflict with 'access' module that also defines ssh service and package.
+	#include pkg_install([$rose->package->ssh])
+	#svc [$rose->service->ssh] {
+		#startup => "enabled",
+		#Before => Noop["complete"],
+	#}
 
-	Pkg[[$rose->package->ssh]] -> Svc[[$rose->service->ssh]]
+	#Pkg[[$rose->package->ssh]] -> Svc[[$rose->service->ssh]]
+	noop "complete" {}
 }
 
 class desktop($kind str) {
-	noop "complete" {}
-
 	# This pkg intermediate variable only exists to help mgmt's type unifier
 	# learn that $rose->package->desktop is a map{str: str}, otherwise
 	# when I look up an entry in that map, it's "ambiguous" and aborts.
