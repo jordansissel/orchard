@@ -54,7 +54,7 @@ class base {
 		}
 	}
 
-	line "jls sudoers" {
+	line "wheel sudoers" {
 		content => "%wheel ALL=(ALL) NOPASSWD: ALL",
 		state => "exists",
 		file => "/etc/sudoers",
@@ -62,6 +62,15 @@ class base {
 
 	if not $is_macos {
 		include ssh
+	}
+
+	include terminfo
+}
+
+class terminfo {
+	file "/usr/share/terminfo/x/xterm-ghostty" {
+		content => deploy.readfile("/files/xterm-ghostty"),
+		state => "exists",
 	}
 }
 
