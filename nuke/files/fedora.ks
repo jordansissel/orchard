@@ -28,9 +28,9 @@ PackageKit
 avahi
 nss-mdns
 
-# also for mgmt, even though I don't use these libs.
-augeas-libs
-libvirt-libs
+# augeas/libvirt are not needed anymore as of 2026-10-10 (commit 03b96d9ba7..) 
+#augeas-libs
+#libvirt-libs
 %end
 
 %post

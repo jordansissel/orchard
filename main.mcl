@@ -1,12 +1,13 @@
 import "node/"
 import "hud/"
 import "nuke/"
+import "hotdesk/"
 
 import "strings"
 import "value"
 import "os"
 
-import "git://github.com/jordansissel/experiments/mgmt/moodle/"
+import "moodle.mcl" as moodle
 
 $is_macos = os.file_exists("/Applications")
 
@@ -24,15 +25,16 @@ if $hostname == "coffee.local" or $hostname == "eclair.local" {
 } else {
 	include node.mgmt
 	include node.purpose
+	include nuke.maybe
 
-	#if $hostname == "fedora-44-gnome" {
-	#include nuke.site
-	#}
-
-	if $hostname == "moodle" {
-		include moodle.moodle(struct{
-			version => "5.2.2",
-			#url_template => "http://10.0.2.2:29145/moodle/stable%s/moodle-%s.tgz",
-		})
+	if $hostname == "MXL1342Y3T" {
+		include hotdesk.desktop("kde")
 	}
+	if $hostname == "moodle" {
+		include moodle.moodle
+	}
+}
+
+print "Hostname" {
+	msg => "Hostname: ${hostname}",
 }

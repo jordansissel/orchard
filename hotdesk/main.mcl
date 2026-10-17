@@ -157,8 +157,8 @@ class base {
 	# XXX Fix conflict with 'access' module that also defines ssh service and package.
 	#include pkg_install([$rose->package->ssh])
 	#svc [$rose->service->ssh] {
-		#startup => "enabled",
-		#Before => Noop["complete"],
+	#startup => "enabled",
+	#Before => Noop["complete"],
 	#}
 
 	#Pkg[[$rose->package->ssh]] -> Svc[[$rose->service->ssh]]
@@ -192,7 +192,7 @@ class desktop($kind str) {
 		# but I don't want it popping up every time I login.
 		# 
 		# XXX: How to disable gnome-tour?
-		
+
 		# Disable idle suspend
 		gsettings "org.gnome.desktop.session idle-delay" {
 			type => "int",

@@ -70,23 +70,6 @@ class caching_proxy($address) {
 
 	include file($address, "/hotdesk/guest.mcl", fmt.printf("%s/mcl/guest.mcl", g_os.getwd()))
 
-	# XXX: Move these into some separate provisioner class?
-	include contents($address, "/installer/debian-preseed.txt", deploy.readfile("/files/debian-preseed.txt"))
-
-	if not $is_macos {
-		$seed_host = "mgmt.local"
-		$seed_ip str = strings.split(os.system("avahi-resolve -n ${seed_host}"), "\t")[1]
-
-		include contents($address, "/installer/fedora.ks", golang.template(deploy.readfile("/files/fedora.ks"), struct{host => $seed_ip}))
-	}
-
-	include contents($address, "/installer/cloud-init/meta-data", "")
-
-	# cloud-init checks and waits for these files, so it's faster to just serve empty files.
-	include contents($address, "/installer/cloud-init/vendor-data", "")
-	include contents($address, "/installer/cloud-init/network-config", "")
-
-	include contents($address, "/installer/cloud-init/user-data", deploy.readfile("/files/cloud-init/user-data"))
 	include contents($address, "/installer/mgmt.service", systemd.service("mgmt", "mgmt run empty --no-autoedges --seeds http://mgmt.local:2379", struct{}))
 
 	$cache_path str = fmt.printf("%s/.local/cache/hotdesk/", sys.getenv("HOME"))

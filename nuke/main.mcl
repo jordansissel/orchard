@@ -3,14 +3,19 @@
 #
 #                   - Ellen Ripley
 
-import "world"
 import "deploy"
 import "fmt"
+import "golang"
+import "local"
 import "os"
 import "strings"
-import "local"
 import "sys"
+import "value"
+import "world"
+import "net"
 import "../cache/"
+
+$is_macos = os.file_exists("/Applications")
 
 class service($http_server) {
 
@@ -76,7 +81,8 @@ class service($http_server) {
 	if os.file_exists($kernel) {
 		include cache.file($http_server, "/installer/kernel", $kernel)
 		include cache.file($http_server, "/installer/initrd", $initrd)
-		include cache.contents($http_server, "/installer/autoexec.ipxe", deploy.readfile("/files/autoexec.ipxe"))
+		#include cache.contents($http_server, "/installer/autoexec.ipxe", deploy.readfile("/files/autoexec.ipxe"))
+		include cache.contents($http_server, "/installer/autoexec.ipxe", deploy.readfile("/files/autoexec-fedora.ipxe"))
 	}
 
 	pkg "ipxe-bootimgs-x86" {
@@ -122,20 +128,80 @@ class service($http_server) {
 		state => "exists",
 	}
 
+	firewalld "tftp" {
+		ports => ["69/udp"],
+		state => "exists",
+	}
+
 	dhcp:server ":67" {
 		interface => "eno1",
 		leasetime => "60s",
-		dns => [ "192.168.12.1" ],
-		routers => [ "192.168.12.1" ],
+		dns => ["192.168.12.1"],
+		routers => ["192.168.12.1"],
 	}
 
-	dhcp:host "hp1" {
-		#mac => "5c:60:ba:d9:16:25",
-		mac => "48:9e:bd:4d:01:90",
-		proxy => true,
-		#ip => "192.168.12.50/24",
-		nbp => "tftp://192.168.12.86/${tftpshim}",
-		ipxe => "http://192.168.12.86:29145/installer/autoexec.ipxe",
+	include nukem("48:9e:bd:4d:01:90", $http_server)
+	include nukem("5c:60:ba:d9:16:25", $http_server)
+
+	include cache.contents($http_server, "/installer/debian-preseed.txt", deploy.readfile("/files/debian-preseed.txt"))
+
+	if not $is_macos {
+		$seed_host = "mgmt.local"
+		$seed_ip str = strings.split(os.system("avahi-resolve -n ${seed_host}"), "\t")[1]
+
+		include cache.contents($http_server, "/installer/fedora.ks", golang.template(deploy.readfile("/files/fedora.ks"), struct{host => $seed_ip}))
+	}
+
+	# cloud-init checks and waits for these files, so it's faster to just serve empty files.
+	include cache.contents($http_server, "/installer/cloud-init/meta-data", "")
+	include cache.contents($http_server, "/installer/cloud-init/vendor-data", "")
+	include cache.contents($http_server, "/installer/cloud-init/network-config", "")
+
+	include cache.contents($http_server, "/installer/cloud-init/user-data", deploy.readfile("/files/cloud-init/user-data"))
+}
+
+class nukem($mac, $http_server) {
+	$name = "nukem ${mac}"
+	$flag = "${name} ${http_server}"
+
+	http:server:flag "${flag}" {
+		key => "nuke",
+		path => "/nuke/${mac}",
+		server => $http_server,
+	}
+
+	value "${name}" {
+		any => "no",
+	}
+
+	kv "nuke/${mac}" {
+		mapped => false,
+	}
+
+	Http:Server:Flag[$flag].value -> Value[$name].any
+	Http:Server:Flag[$flag].value -> Kv["nuke/${mac}"].value
+
+	$nuke = value.get_str($name)->value == "yes"
+
+	if $nuke {
+		include cache.contents($http_server, "/nuke/${mac}", "yes\n")
+		dhcp:host "${name}" {
+			mac => "${mac}",
+			proxy => true,
+			nbp => "tftp://192.168.12.86/shim.efi",
+			ipxe => "http://192.168.12.86:29145/installer/autoexec.ipxe",
+		}
+	} else {
+		include cache.contents($http_server, "/nuke/${mac}", "no\n")
+
+		# Serving a nonexistant file as NBP allows netbooting to proceed faster
+		# Otherwise, PXE boot will hang for a long time.
+		# At least, it does on HP Prodesk 600 G6 machines.
+		dhcp:host "${name}" {
+			mac => "${mac}",
+			proxy => true,
+			nbp => "tftp://192.168.12.86/no-such-file",
+		}
 	}
 }
 
@@ -274,5 +340,17 @@ class with_kexec {
 		Depend => Http:Client["${workdir}initrd.img"],
 		Depend => Http:Client["${workdir}vmlinuz"],
 		Depend => Pkg["kexec-tools"],
+	}
+}
+
+
+class maybe {
+	#for $i, $keytype in $keytypes {
+	for $i, $mac in net.macs() {
+		$kv = world.getval("nuke/${mac}")
+		if $kv->exists and $kv->value == "yes" {
+			# Initiate launch sequence ;P
+			include site
+		}
 	}
 }

@@ -33,7 +33,7 @@ class base {
 	}
 
 	#user "dev" {
-		#state => "exists",
+	#state => "exists",
 	#}
 
 	ssh:authorized_key "workstation" {
@@ -104,15 +104,8 @@ class ssh {
 		$pub_path = "/etc/ssh/ssh_host_${keytype}_key.pub"
 		$exists = os.file_exists($pub_path)
 
-		print "${hostname} - ssh key exists ${pub_path}" {
-			msg => convert.format_bool($exists),
-			Meta:autogroup => false,
-		}
-
-		if os.file_exists($pub_path) {
-			$pub = os.readfile($pub_path)
-
-			# XXX: Make this string into a function.
+		$pub = os.readfile($pub_path) <|> ""
+		if $pub != "" {
 			kv "ssh/${keytype}" {
 				mapped => true,
 				value => $pub,
@@ -213,11 +206,10 @@ class ca_elected {
 					$exec = "sign ${host} ssh key ${keytype}"
 
 					exec $exec {
-						#cmd => "ssh-keygen",
-						#args => ["-s", $ssh_ca, "-h", "-I", $host, "-i", $host, "-P", $passphrase->value, $path],
 						cmd => "sudo",
 						args => ["expect", "/usr/local/bin/sign.expect", $path, $ssh_ca, $host, $passphrase->value],
-						creates => $cert,
+						#creates => $cert,
+						mtimes => [$path],
 						Depend => Exec["create ssh certificate authority"],
 						Depend => File[$path],
 					}

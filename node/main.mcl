@@ -47,14 +47,23 @@ class register {
 		value => $uuid,
 	}
 
-	$serial = strings.trim_space(os.readfile("/sys/devices/virtual/dmi/id/product_serial")) <|> ""
-	if $serial != "" {
-		hostname $serial {}
+	func dmi($keyword) {
+		strings.trim_space(os.readfile("/sys/devices/virtual/dmi/id/${keyword}")) <|> ""
+	}
 
+	$serial = dmi("product_serial")
+	$name = dmi("product_name")
+
+	if $serial != "" {
+		hostname [$serial] {}
 		kv "serial" {
 			mapped => true,
 			value => $serial,
 		}
+	} else {
+		panic($name == "", "Missing both product serial and product name from dmi table")
+
+		hostname [$name] {}
 	}
 
 	if os.file_exists("/etc/machine-id") {
@@ -150,10 +159,10 @@ class nexus_elected {
 
 	include access.ca
 
-	#firewalld "mgmt-http-cache" {
-	#ports => ["29145/tcp"],
-	#state => "exists",
-	#}
+	firewalld "mgmt-http-cache" {
+		ports => ["29145/tcp"],
+		state => "exists",
+	}
 
 	$address = if $is_macos {
 		"127.0.0.1:29145"
@@ -186,7 +195,7 @@ class nexus_advertisement {
 
 	include systemd.service("mgmt", struct{
 		run => "mgmt run empty --no-autoedges --seeds http://${seed_host}:2379",
-    state => "",
+		state => "",
 	})
 
 	#firewalld "mgmt" {
@@ -209,15 +218,6 @@ class mgmt {
 			content => "10.0.2.2 mgmt.local",
 			file => "/etc/hosts",
 			state => "exists",
-		}
-
-		pkg "dmidecode" {
-			state => "installed",
-		}
-
-		if os.file_exists("/usr/bin/dmidecode") {
-			$hotdesk_name = strings.trim_space(os.system("dmidecode -s system-product-name"))
-			hostname [$hotdesk_name] {}
 		}
 	}
 
