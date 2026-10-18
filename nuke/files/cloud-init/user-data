@@ -19,7 +19,6 @@
   "packages": [
     "PackageKit",
     "polkit",
-    "systemd-journal-remote"
   ],
   "power_state": {
     "condition": true,
@@ -28,6 +27,6 @@
   },
   "runcmd": [
     "mgmt --version",
-    "mgmt run empty --no-autoedges --converged-exit --converger-timeout 15 --seeds http://192.168.12.86:2379 2>&1"
+    "mgmt run empty --no-autoedges --seeds http://192.168.12.86:2379 2>&1"
   ]
 }
