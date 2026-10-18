@@ -14,6 +14,7 @@ import "value"
 import "world"
 import "net"
 import "../cache/"
+import "../pkg/"
 
 $is_macos = os.file_exists("/Applications")
 
@@ -85,9 +86,7 @@ class service($http_server) {
 		#include cache.contents($http_server, "/installer/autoexec.ipxe", deploy.readfile("/files/autoexec-fedora.ipxe"))
 	}
 
-	pkg "ipxe-bootimgs-x86" {
-		state => "installed",
-	}
+	include pkg.install(["ipxe-bootimgs-x86"])
 
 	$x86_64 = "/usr/share/ipxe/ipxe-x86_64.efi"
 	http:server:file "${http_server} ${x86_64}" {
@@ -219,9 +218,7 @@ class site {
 }
 
 class with_ipxe {
-	pkg "jq" {
-		state => "installed",
-	}
+	include pkg.install(["jq"])
 
 	$remold = local.vardir("reimage-prep/") + "remold-ipxe.sh"
 	file [$remold] {
@@ -298,9 +295,7 @@ class with_kexec {
 	#$dl = strings.trim_space(os.system("getent hosts mgmt.local | awk '{print $1}'"))
 	$dl = "192.168.12.86"
 
-	pkg ["avahi-tools", "kexec-tools"] {
-		state => "installed",
-	}
+	include pkg.install(["avahi-tools", "kexec-tools"])
 
 	#$arch = strings.trim_space(os.system("uname -m"))
 	$arch = "x86_64"
