@@ -36,22 +36,22 @@ class base {
 	#state => "exists",
 	#}
 
-	ssh:authorized_key "workstation" {
-		user => "jls",
-		state => "exists",
-		content => "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN+ExtFKyIpHz1EvUzmwZrAAgjTYNcskkcbliCM966kB jls@fedora",
-		Depend => User["jls"],
-	}
-
-	ssh:authorized_key "laptop" {
-		user => "jls",
-		state => "exists",
-		content => "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBPMi8JLzSSECJpYR6Sd4sav11WBStpgyvB7NuVvDBQq21guZksLzQCvHfsBXMXsE+xes+Rao3Jglf/XZ9KNHc6QAAAAEc3NoOg==",
-		Depend => User["jls"],
-	}
-
 	if os.user_exists("jls") {
 		$home = os.home("jls")
+		ssh:authorized_key "workstation" {
+			user => "jls",
+			state => "exists",
+			content => "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN+ExtFKyIpHz1EvUzmwZrAAgjTYNcskkcbliCM966kB jls@fedora",
+		}
+
+		ssh:authorized_key "laptop" {
+			user => "jls",
+			state => "exists",
+			content => "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBPMi8JLzSSECJpYR6Sd4sav11WBStpgyvB7NuVvDBQq21guZksLzQCvHfsBXMXsE+xes+Rao3Jglf/XZ9KNHc6QAAAAEc3NoOg==",
+		}
+
+		User["jls"] -> Ssh:Authorized_key["laptop"]
+		User["jls"] -> Ssh:Authorized_key["workstation"]
 
 		$ssh_ca = world.getval("ssh_ca")
 		if $ssh_ca->exists {
