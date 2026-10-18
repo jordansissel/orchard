@@ -1,0 +1,42 @@
+
+class completion {
+	noop "complete" {}
+}
+
+class install($packages []str) {
+	include completion
+
+	pkg $packages {
+		# On Ubuntu (and maybe elsewhere), Packagekit marks certain packages as "unsupported" ?
+		# Ubuntu's qemu-guest-agent, kde-plasma-desktop, etc, all will be  "not found" by mgmt
+		# if the allowunsupported is the default (false) value.
+		# This seems to correlate with Ubuntu package 'Section' fields prefixed with 'universe/'
+		allowunsupported => true,
+
+		state => "installed",
+
+		Before => Noop["complete"],
+
+		# Sometimes the network is wonky and we should try again.
+		Meta:retry => 5,
+		Meta:delay => 1,
+	}
+}
+
+class version($package, $version) {
+	pkg [$package] {
+		# On Ubuntu (and maybe elsewhere), Packagekit marks certain packages as "unsupported" ?
+		# Ubuntu's qemu-guest-agent, kde-plasma-desktop, etc, all will be  "not found" by mgmt
+		# if the allowunsupported is the default (false) value.
+		# This seems to correlate with Ubuntu package 'Section' fields prefixed with 'universe/'
+		allowunsupported => true,
+
+		state => "${version}",
+
+		Before => Noop["complete"],
+
+		# Sometimes the network is wonky and we should try again.
+		Meta:retry => 5,
+		Meta:delay => 1,
+	}
+}
