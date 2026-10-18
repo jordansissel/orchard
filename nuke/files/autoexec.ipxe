@@ -7,7 +7,7 @@ sleep 1
 set dlhost 192.168.12.86
 set arch x86_64
 
-set cmdline console=tty1 console=ttyS0 ip=dhcp rd.neednet=1
+set cmdline console=tty1 ip=dhcp rd.neednet=1
 #set cmdline ip=dhcp rd.neednet=1
 
 echo Command line
