@@ -6,25 +6,11 @@ import "convert"
 import "deploy"
 import "world/collect"
 import "iter"
-
 import "fmt"
 
+import "../pkg/"
+
 $is_macos = os.file_exists("/Applications")
-
-class pkg_install($packages []str) {
-	pkg $packages {
-		# On Ubuntu (and maybe elsewhere), Packagekit marks certain packages as "unsupported" ?
-		# Ubuntu's qemu-guest-agent, kde-plasma-desktop, etc, all will be  "not found" by mgmt
-		# if the allowunsupported is the default (false) value.
-		# This seems to correlate with Ubuntu package 'Section' fields prefixed with 'universe/'
-		allowunsupported => true,
-
-		state => "installed",
-		#Before => Noop["complete"],
-		Meta:retry => 5,
-		Meta:delay => 1,
-	}
-}
 
 class base {
 	user "jls" {
@@ -91,7 +77,7 @@ class terminfo {
 
 $keytypes = ["ed25519", "rsa", "ecdsa"]
 class ssh {
-	include pkg_install(["openssh-server"])
+	include pkg.install(["openssh-server"])
 
 	svc "sshd" {
 		startup => "enabled",
@@ -215,7 +201,7 @@ class ca_elected {
 					}
 
 					if not $is_macos {
-						include pkg_install(["expect"])
+						include pkg.install(["expect"])
 						Pkg["expect"] -> Exec[$exec]
 					}
 
