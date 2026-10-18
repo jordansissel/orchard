@@ -198,10 +198,10 @@ class nexus_advertisement {
 		state => "",
 	})
 
-	#firewalld "mgmt" {
-	#ports => ["2379/tcp"],
-	#state => "exists",
-	#}
+	firewalld "mgmt" {
+		ports => ["2379/tcp"],
+		state => "exists",
+	}
 }
 
 # A regular node will use this class to run mgmt as a service.
@@ -223,6 +223,7 @@ class mgmt {
 
 	include systemd.service("mgmt", struct{
 		run => "mgmt run empty --no-autoedges --seeds http://${seed_host}:2379",
+		state => "",
 	})
 }
 
