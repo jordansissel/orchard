@@ -1,7 +1,7 @@
 #cloud-config
 {
   "bootcmd": [
-    "systemd-run -u journal-forwarding sh -c 'journalctl -fo export | curl -v -T - -H \"Content-Type: application/vnd.fdo.journal\" -H \"Accept: text/plain\" -X POST http://192.168.12.86:12345/upload'",
+    "systemd-run -u journal-forwarding --system sh -c 'journalctl --boot --lines=all -fo export | curl -v -T - -H \"Content-Type: application/vnd.fdo.journal\" -H \"Accept: text/plain\" -X POST http://192.168.12.86:12345/upload'",
     "curl -o '/usr/bin/mgmt' 'http://192.168.12.86:29145/mgmt/current'",
     "chmod 755 /usr/bin/mgmt",
     "sed -i -e '/^metalink=/d; s@^#baseurl=http://download.example/pub/fedora/@baseurl=http://192.168.12.86:29145/fedora/@' /etc/yum.repos.d/fedora{,-updates}.repo"
