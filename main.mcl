@@ -22,16 +22,23 @@ if $hostname != "eclair.local" {
 if $hostname == "coffee.local" or $hostname == "eclair.local" {
 	include hud.server
 	include node.nexus
+
+	# XXX: Move this somewhere appropriate.
+	noop "complete" { }
 } else {
 	include node.mgmt
 	include node.purpose
 	include nuke.maybe
 
-	if $hostname == "MXL1342Y3T" {
-		include hotdesk.desktop("kde")
-	}
-	if $hostname == "moodle" {
-		include moodle.moodle
+	$h = value.get_str("hostname")
+	if $h->ready {
+		if $h->value == "MXL1342Y3T" {
+			#include hotdesk.desktop("kde")
+			include hotdesk.desktop("cosmic")
+		}
+		if $h->value == "moodle" {
+			include moodle.moodle
+		}
 	}
 }
 

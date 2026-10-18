@@ -13,6 +13,7 @@ import "../access/"
 import "../cache/"
 import "../nuke/"
 import "../hotdesk/"
+import "../pkg/"
 
 $seed_host = "mgmt.local"
 
@@ -60,10 +61,22 @@ class register {
 			mapped => true,
 			value => $serial,
 		}
+
+		# the hostname resource doesn't seem to change $hostname 
+		# during an mgmt run... so ... a workaround?
+		value "hostname" {
+			any => $serial,
+		}
 	} else {
 		panic($name == "", "Missing both product serial and product name from dmi table")
 
 		hostname [$name] {}
+
+		# the hostname resource doesn't seem to change $hostname 
+		# during an mgmt run... so ... a workaround?
+		value "hostname" {
+			any => $name,
+		}
 	}
 
 	if os.file_exists("/etc/machine-id") {
@@ -103,9 +116,7 @@ class register {
 }
 
 class monitor {
-	pkg ["smartmontools", "pciutils", "lm_sensors"] {
-		state => "installed",
-	}
+	include pkg.install(["smartmontools", "pciutils", "lm_sensors"])
 }
 
 class basics {
@@ -114,9 +125,7 @@ class basics {
 	# Install the kernel-modules package specific to the kernel we're running.
 	$kernel = strings.replace_all(strings.trim_space(os.system("uname -r")), ".x86_64", "")
 
-	pkg "kernel-modules" {
-		state => "${kernel}",
-	}
+	include pkg.version("kernel-modules", "${kernel}")
 
 	if os.file_exists("/usr/bin/dmidecode") {
 		$vendor = strings.trim_space(os.system("dmidecode -s system-manufacturer"))
@@ -174,9 +183,7 @@ class nexus_elected {
 }
 
 class nexus_advertisement {
-	pkg ["avahi"] {
-		state => "installed",
-	}
+	include pkg.install(["avahi"])
 
 	$nexus_script = "/usr/local/bin/nexus-mdns.sh"
 
@@ -206,9 +213,7 @@ class nexus_advertisement {
 
 # A regular node will use this class to run mgmt as a service.
 class mgmt {
-	pkg ["avahi", "nss-mdns"] {
-		state => "installed",
-	}
+	include pkg.install(["avahi", "nss-mdns"])
 
 	include access.base
 
