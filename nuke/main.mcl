@@ -81,8 +81,8 @@ class service($http_server) {
 	if os.file_exists($kernel) {
 		include cache.file($http_server, "/installer/kernel", $kernel)
 		include cache.file($http_server, "/installer/initrd", $initrd)
-		#include cache.contents($http_server, "/installer/autoexec.ipxe", deploy.readfile("/files/autoexec.ipxe"))
-		include cache.contents($http_server, "/installer/autoexec.ipxe", deploy.readfile("/files/autoexec-fedora.ipxe"))
+		include cache.contents($http_server, "/installer/autoexec.ipxe", deploy.readfile("/files/autoexec.ipxe"))
+		#include cache.contents($http_server, "/installer/autoexec.ipxe", deploy.readfile("/files/autoexec-fedora.ipxe"))
 	}
 
 	pkg "ipxe-bootimgs-x86" {
@@ -183,25 +183,24 @@ class nukem($mac, $http_server) {
 
 	$nuke = value.get_str($name)->value == "yes"
 
-	if $nuke {
-		include cache.contents($http_server, "/nuke/${mac}", "yes\n")
-		dhcp:host "${name}" {
-			mac => "${mac}",
-			proxy => true,
-			nbp => "tftp://192.168.12.86/shim.efi",
-			ipxe => "http://192.168.12.86:29145/installer/autoexec.ipxe",
-		}
+	$nbp = if $nuke {
+			"tftp://192.168.12.86/shim.efi"
 	} else {
-		include cache.contents($http_server, "/nuke/${mac}", "no\n")
-
 		# Serving a nonexistant file as NBP allows netbooting to proceed faster
 		# Otherwise, PXE boot will hang for a long time.
 		# At least, it does on HP Prodesk 600 G6 machines.
-		dhcp:host "${name}" {
-			mac => "${mac}",
-			proxy => true,
-			nbp => "tftp://192.168.12.86/no-such-file",
-		}
+		"tftp://192.168.12.86/no-such-file"
+	}
+
+	$ipxe = "http://192.168.12.86:29145/installer/autoexec.ipxe"
+
+	include cache.contents($http_server, "/nuke/${mac}", if $nuke { "yes" } else { "no" })
+
+	dhcp:host $name {
+		mac => $mac,
+		proxy => true,
+		nbp => $nbp,
+		ipxe => $ipxe,
 	}
 }
 
