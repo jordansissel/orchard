@@ -1,0 +1,53 @@
+import "os"
+import "encoding"
+import "fmt"
+import "value"
+import "local"
+import "convert"
+import "strings"
+
+class parse($path, $jq) {
+	pkg "jq" {
+		state => "installed",
+	}
+
+	$id = strings.replace_all("parse_json(${path}, ${jq})", "/", "_")
+
+	$num = convert.int_to_str(local.pool("parse_json", $id))
+
+	print "parse_json(${num})" {
+		msg => "Path:${path}, JQ:${jq}",
+		Meta:autogroup => false,
+	}
+
+	print "parse_json exists(${num})" {
+		msg => fmt.printf("File Exists: %t", os.file_exists($path)),
+		Meta:autogroup => false,
+	}
+
+	if os.file_exists($path) {
+		exec [$id] {
+			mtimes => [$path],
+
+			cmd => "jq",
+			args => ["-r", $jq, $path],
+			#args => [$jq, $path],
+			Depend => Pkg["jq"],
+
+		}
+
+		Exec[[$id]].output -> Value[[$id]].any
+
+		value [$id] { }
+	}
+
+	$v = value.get_str($id)
+	$result = if $v->ready {
+		$v->value
+	} else {
+		""
+	}
+
+	$trimmed = strings.trim_space($result)
+}
+
