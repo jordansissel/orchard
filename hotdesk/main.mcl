@@ -9,6 +9,9 @@ import "golang/strings" as golang_strings
 import "world"
 import "convert"
 
+import "../pkg/"
+import "../json/"
+
 $osinfo = os.release()
 
 # A rose by any other name... everybody likes to call packages by different names.
@@ -82,21 +85,6 @@ $rose struct{package struct{desktop map{str: str}; gdm str; ssh str}; service st
 	},
 }[$osinfo->id]
 
-class pkg_install($packages []str) {
-	pkg $packages {
-		# On Ubuntu (and maybe elsewhere), Packagekit marks certain packages as "unsupported" ?
-		# Ubuntu's qemu-guest-agent, kde-plasma-desktop, etc, all will be  "not found" by mgmt
-		# if the allowunsupported is the default (false) value.
-		# This seems to correlate with Ubuntu package 'Section' fields prefixed with 'universe/'
-		allowunsupported => true,
-
-		state => "installed",
-		Before => Noop["complete"],
-		Meta:retry => 5,
-		Meta:delay => 1,
-	}
-}
-
 class base {
 	# XXX: Do a workaround on Debian and Ubuntu systems:
 	# Reference> https://www.dedoimedo.com/computers/ubuntu-network-online-offline.html
@@ -129,7 +117,7 @@ class base {
 	}
 
 	if os.is_virtual() {
-		include pkg_install(["qemu-guest-agent", "spice-vdagent"])
+		include pkg.install(["qemu-guest-agent", "spice-vdagent"])
 
 		svc "spice-vdagentd" {
 			startup => "enabled",
@@ -154,18 +142,38 @@ class base {
 		}
 	}
 
+	user "dev" {
+		state => "exists",
+	}
+
 	# XXX Fix conflict with 'access' module that also defines ssh service and package.
-	#include pkg_install([$rose->package->ssh])
+	#include pkg.install([$rose->package->ssh])
 	#svc [$rose->service->ssh] {
 	#startup => "enabled",
 	#Before => Noop["complete"],
 	#}
 
 	#Pkg[[$rose->package->ssh]] -> Svc[[$rose->service->ssh]]
-	noop "complete" {}
+
+	include json.parse("/run/cloud-init/status.json", ".v1.stage // \"none\"") as cloudstatus
+
+	print "cloud-init status" {
+		msg => $cloudstatus.trimmed,
+		Meta:autogroup => false,
+	}
+
+	if $cloudstatus.trimmed == "modules-final" {
+		# When running under cloud-init, I want mgmt to exit and allow cloud-init
+		# to complete.
+		exit "completing cloud-init" {
+			Depend => Noop["complete"],
+		}
+	}
 }
 
 class desktop($kind str) {
+	include base
+
 	# This pkg intermediate variable only exists to help mgmt's type unifier
 	# learn that $rose->package->desktop is a map{str: str}, otherwise
 	# when I look up an entry in that map, it's "ambiguous" and aborts.
@@ -174,9 +182,9 @@ class desktop($kind str) {
 	$desktop_package = $pkg[$kind]
 
 	if $osinfo->id == "debian" and $osinfo->version_id == "11" {
-		include pkg_install(["kitty"])
+		include pkg.install(["kitty"])
 	} else {
-		include pkg_install(["ptyxis"])
+		include pkg.install(["ptyxis"])
 	}
 
 	$packages = [
@@ -185,7 +193,7 @@ class desktop($kind str) {
 		$rose->package->gdm,
 	]
 
-	include pkg_install($packages)
+	include pkg.install($packages)
 
 	if $kind == "gnome" {
 		# gnome-tour is automatically installed as a part of gnome-desktop
@@ -203,11 +211,7 @@ class desktop($kind str) {
 
 	if $kind == "niri" {
 		if $osinfo->id == "arch" {
-			pkg ["alacritty", "dms-shell-niri", "xdg-desktop-portal-gnome", "xdg-desktop-portal-gtk", "xwayland-satellite"] {
-				state => "installed",
-				Meta:retry => 5,
-				Meta:delay => 1,
-			}
+			include pkg.install(["alacritty", "dms-shell-niri", "xdg-desktop-portal-gnome", "xdg-desktop-portal-gtk", "xwayland-satellite"])
 		}
 	}
 
@@ -267,7 +271,7 @@ class networkmanager_workaround {
 		mode => "0600",
 	}
 
-	include pkg_install(["network-manager"])
+	include pkg.install(["network-manager"])
 
 	exec "netplan generate" {
 		cmd => "netplan",
