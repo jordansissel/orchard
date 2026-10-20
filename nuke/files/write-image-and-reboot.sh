@@ -40,4 +40,7 @@ kernel="$(ls -t /mnt/boot/vmlinuz* | sed -ne 1p)"
 version="${kernel#*vmlinuz-}"
 
 #kexec --initrd "/mnt/boot/initramfs-$version.img" --append "root=${partition} rootflags=subvol=root console=tty1 console=ttyS0,115200n8 ds=nocloud;s=http://192.168.12.86:29145/installer/cloud-init/" "$kernel" 
-kexec --initrd "/mnt/boot/initramfs-$version.img" --append "root=${partition} rootflags=subvol=root console=tty1 ds=nocloud;s=http://192.168.12.86:29145/installer/cloud-init/" "$kernel" 
+
+# Use '--exec' now to skip systemd's shutdown process as it is not needed.
+kexec --load --initrd "/mnt/boot/initramfs-$version.img" --append "root=${partition} rootflags=subvol=root console=tty1 ds=nocloud;s=http://192.168.12.86:29145/installer/cloud-init/" "$kernel" 
+kexec --exec

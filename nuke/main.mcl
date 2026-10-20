@@ -139,8 +139,10 @@ class service($http_server) {
 		routers => ["192.168.12.1"],
 	}
 
+	# XXX: maybe automatically generate these somehow?
 	include nukem("48:9e:bd:4d:01:90", $http_server)
 	include nukem("5c:60:ba:d9:16:25", $http_server)
+	include nukem("c8:5a:cf:ba:7a:de", $http_server)
 
 	include cache.contents($http_server, "/installer/debian-preseed.txt", deploy.readfile("/files/debian-preseed.txt"))
 
@@ -327,13 +329,21 @@ class with_kexec {
 	#}
 	#
 
-	$args = "console=tty0 console=ttyS0 ip=dhcp rd.neednet=1"
-	exec "kexec" {
+	$args = "console=tty0 ip=dhcp rd.neednet=1"
+	exec "kexec load" {
 		cmd => "kexec",
-		args => ["--initrd", fmt.printf("${workdir}initrd.img"), "--append", $args, "${workdir}vmlinuz"],
+		# Use '--exec' now to skip systemd's shutdown process as it is not needed.
+		args => ["--load", "--initrd", fmt.printf("${workdir}initrd.img"), "--append", $args, "${workdir}vmlinuz"],
 		Depend => Http:Client["${workdir}initrd.img"],
 		Depend => Http:Client["${workdir}vmlinuz"],
 		Depend => Pkg["kexec-tools"],
+	}
+
+	exec "kexec now" {
+		cmd => "kexec",
+		# Use '--exec' now to skip systemd's shutdown process as it is not needed.
+		args => ["--exec"],
+		Depend => Exec["kexec load"],
 	}
 }
 
