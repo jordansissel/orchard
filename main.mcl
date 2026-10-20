@@ -29,12 +29,35 @@ if $hostname == "coffee.local" or $hostname == "eclair.local" {
 	include node.mgmt
 	include node.purpose
 	include nuke.maybe
+	include hotdesk.base
 
 	$h = value.get_str("hostname")
 	if $h->ready {
 		if $h->value == "MXL1342Y3T" {
-			#include hotdesk.desktop("kde")
+			include hotdesk.desktop("kde")
+		}
+		if $h->value == "MXL20846M2" {
 			include hotdesk.desktop("cosmic")
+
+			exec "lol hp_bioscfg" {
+				cmd => "sh",
+				args => [ "-c", "echo whatever > '/sys/class/firmware-attributes/hp-bioscfg/authentication/Setup Password/current_password'" ],
+			}
+
+			# XXX: Make this work on hp_bioscfg? I don't know how to make it work.
+			# It seems like the system has to echo the bios password to enable it?
+			fwattr "Startup Delay (sec.)" {
+				driver => "hp_bioscfg",
+				value => "5",
+				Depend => Exec["lol hp_bioscfg"],
+			}
+
+			fwattr "Audio Alerts During Boot" {
+				driver => "hp_bioscfg",
+				value => "Enable",
+				Depend => Exec["lol hp_bioscfg"],
+			}
+
 		}
 		if $h->value == "moodle" {
 			include moodle.moodle
