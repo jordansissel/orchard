@@ -24,34 +24,55 @@ class base {
 
 	if os.user_exists("jls") {
 		$home = os.home("jls")
-		ssh:authorized_key "workstation" {
-			user => "jls",
+
+		file "${home}" {
 			state => "exists",
-			content => "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN+ExtFKyIpHz1EvUzmwZrAAgjTYNcskkcbliCM966kB jls@fedora",
+			owner => "jls",
 		}
 
-		ssh:authorized_key "laptop" {
-			user => "jls",
+		file "${home}.ssh/" {
 			state => "exists",
-			content => "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBPMi8JLzSSECJpYR6Sd4sav11WBStpgyvB7NuVvDBQq21guZksLzQCvHfsBXMXsE+xes+Rao3Jglf/XZ9KNHc6QAAAAEc3NoOg==",
+			owner => "jls",
+			Depend => File["${home}"],
 		}
 
-		User["jls"] -> Ssh:Authorized_key["laptop"]
-		User["jls"] -> Ssh:Authorized_key["workstation"]
+		# XXX: This file_exists works around a bug where ssh:authorized_key tries to watch the directory before it may exist.
+		if os.file_exists("${home}") {
+			ssh:authorized_key "workstation" {
+				user => "jls",
+				state => "exists",
+				content => "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN+ExtFKyIpHz1EvUzmwZrAAgjTYNcskkcbliCM966kB jls@fedora",
+			}
+
+			ssh:authorized_key "laptop" {
+				user => "jls",
+				state => "exists",
+				content => "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBPMi8JLzSSECJpYR6Sd4sav11WBStpgyvB7NuVvDBQq21guZksLzQCvHfsBXMXsE+xes+Rao3Jglf/XZ9KNHc6QAAAAEc3NoOg==",
+			}
+
+			User["jls"] -> Ssh:Authorized_key["laptop"]
+			User["jls"] -> Ssh:Authorized_key["workstation"]
+		}
 
 		$ssh_ca = world.getval("ssh_ca")
 		if $ssh_ca->exists {
-			$known_hosts = "${home}/.ssh/known_hosts"
-			file $known_hosts {
-				owner => "jls",
-				state => "exists",
-			}
+			$known_hosts = "${home}.ssh/known_hosts"
 
-			line "ssh-ca in ~jls/.ssh/known_hosts" {
-				file => $known_hosts,
-				content => "@cert-authority * " + $ssh_ca->value,
-				state => "exists",
-			}
+			# XXX: This guard 
+			#if os.file_exists("${home}.ssh/") {
+				file $known_hosts {
+					owner => "jls",
+					state => "exists",
+					#Depend => File["${home}.ssh/"],
+				}
+
+				line "ssh-ca in ~jls/.ssh/known_hosts" {
+					file => $known_hosts,
+					content => "@cert-authority * " + $ssh_ca->value,
+					state => "exists",
+					Depend => File[$known_hosts],
+				}
+			#}
 		}
 	}
 
