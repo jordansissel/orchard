@@ -200,15 +200,12 @@ class nexus_advertisement {
 
 	Pkg["avahi"] -> Svc["nexus-mdns"]
 
-	include systemd.service("mgmt", struct{
-		run => "mgmt run empty --no-autoedges --seeds http://${seed_host}:2379",
-		state => "",
-	})
-
 	firewalld "mgmt" {
 		ports => ["2379/tcp"],
 		state => "exists",
 	}
+
+	include mgmt_service
 }
 
 # A regular node will use this class to run mgmt as a service.
@@ -226,9 +223,14 @@ class mgmt {
 		}
 	}
 
+	include mgmt_service
+}
+
+class mgmt_service {
 	include systemd.service("mgmt", struct{
 		run => "mgmt run empty --no-autoedges --seeds http://${seed_host}:2379",
 		state => "",
+		safe => false,
 	})
 }
 
