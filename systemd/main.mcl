@@ -20,6 +20,9 @@ func service($name str, $cmd str, $st) str {
 			state => $st->state <|> "running",
 
 			name => $name,
+
+      # Add safety restrictions to the systemd unit
+			safe => $st->safe <|> true,
 		},
 	)
 }
@@ -41,6 +44,9 @@ class service($name, $st) {
 		state => $st->state <|> "running",
 
 		name => $name,
+
+    # Add safety restrictions to the systemd unit
+		safe => $st->safe <|> true,
 	}
 
 	$refresh_systemd = "refresh systemd"
