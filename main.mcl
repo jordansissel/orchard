@@ -7,7 +7,7 @@ import "strings"
 import "value"
 import "os"
 
-import "moodle.mcl" as moodle
+#import "moodle.mcl" as moodle
 
 $is_macos = os.file_exists("/Applications")
 
@@ -59,9 +59,9 @@ if $hostname == "coffee.local" or $hostname == "eclair.local" {
 			}
 
 		}
-		if $h->value == "moodle" {
-			include moodle.moodle
-		}
+		#if $h->value == "moodle" {
+		#include moodle.moodle
+		#}
 	}
 }
 

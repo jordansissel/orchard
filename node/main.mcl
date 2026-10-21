@@ -175,7 +175,7 @@ class nexus {
 		max => 1,
 	}
 
-	if world.schedule("nexus") == [$hostname] {
+	if $hostname in world.schedule("nexus") {
 		include nexus_elected
 	}
 }
@@ -189,10 +189,10 @@ class nexus_elected {
 
 	include access.ca
 
-	firewalld "mgmt-http-cache" {
-		ports => ["29145/tcp"],
-		state => "exists",
-	}
+	#firewalld "mgmt-http-cache" {
+	#ports => ["29145/tcp"],
+	#state => "exists",
+	#}
 
 	$address = if $is_macos {
 		"127.0.0.1:29145"
@@ -221,12 +221,12 @@ class nexus_advertisement {
 
 	Pkg["avahi"] -> Svc["nexus-mdns"]
 
-	firewalld "mgmt" {
-		ports => ["2379/tcp"],
-		state => "exists",
-	}
-
 	include mgmt_service
+
+	#firewalld "mgmt" {
+	#ports => ["2379/tcp"],
+	#state => "exists",
+	#}
 }
 
 # A regular node will use this class to run mgmt as a service.

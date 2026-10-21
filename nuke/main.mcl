@@ -118,19 +118,19 @@ class service($http_server) {
 		path => $x86_64,
 	}
 
-	firewalld "dhcp" {
-		ports => ["67/udp"],
-		state => "exists",
-	}
-	firewalld "dhcp-proxy" {
-		ports => ["4011/udp"],
-		state => "exists",
-	}
+	#firewalld "dhcp" {
+	#ports => ["67/udp"],
+	#state => "exists",
+	#}
+	#firewalld "dhcp-proxy" {
+	#ports => ["4011/udp"],
+	#state => "exists",
+	#}
 
-	firewalld "tftp" {
-		ports => ["69/udp"],
-		state => "exists",
-	}
+	#firewalld "tftp" {
+	#ports => ["69/udp"],
+	#state => "exists",
+	#}
 
 	dhcp:server ":67" {
 		interface => "eno1",

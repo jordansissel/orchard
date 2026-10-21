@@ -154,7 +154,7 @@ class ca {
 
 	$ca = world.schedule("certificate authority")
 
-	if $ca == [$hostname] {
+	if $hostname in $ca {
 		include ca_elected
 	}
 }
@@ -209,7 +209,13 @@ class ca_elected {
 						state => "exists",
 					}
 
-					file "/usr/local/bin/sign.expect" {
+					$expect_script = if $is_macos {
+						os.expand_home("~/.local/bin/sign.expect")
+					} else {
+						"/usr/local/bin/sign.expect"
+					}
+
+					file [$expect_script] {
 						content => deploy.readfile("/files/sign.expect"),
 						state => "exists",
 					}
@@ -218,12 +224,13 @@ class ca_elected {
 					$exec = "sign ${host} ssh key ${keytype}"
 
 					exec $exec {
-						cmd => "sudo",
-						args => ["expect", "/usr/local/bin/sign.expect", $path, $ssh_ca, $host, $passphrase->value],
+						cmd => "expect",
+						args => [$expect_script, $path, $ssh_ca, $host, $passphrase->value],
 						#creates => $cert,
 						mtimes => [$path],
 						Depend => Exec["create ssh certificate authority"],
 						Depend => File[$path],
+						Depend => File[$expect_script],
 					}
 
 					if not $is_macos {
