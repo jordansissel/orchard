@@ -24,7 +24,7 @@ if $hostname == "coffee.local" or $hostname == "eclair.local" {
 	include node.nexus
 
 	# XXX: Move this somewhere appropriate.
-	noop "complete" { }
+	noop "complete" {}
 } else {
 	include node.mgmt
 	include node.purpose
@@ -41,7 +41,7 @@ if $hostname == "coffee.local" or $hostname == "eclair.local" {
 
 			exec "lol hp_bioscfg" {
 				cmd => "sh",
-				args => [ "-c", "echo whatever > '/sys/class/firmware-attributes/hp-bioscfg/authentication/Setup Password/current_password'" ],
+				args => ["-c", "echo whatever > '/sys/class/firmware-attributes/hp-bioscfg/authentication/Setup Password/current_password'"],
 			}
 
 			# XXX: Make this work on hp_bioscfg? I don't know how to make it work.

@@ -7,18 +7,18 @@ import "convert"
 import "strings"
 
 class parse($path, $jq) {
-  # Can I use encoding.decode_json here instead of jq?
-  # Or do some trickery with the json:edit resource?
+	# Can I use encoding.decode_json here instead of jq?
+	# Or do some trickery with the json:edit resource?
 	pkg "jq" {
 		state => "installed",
 	}
 
-  # I want a unique resource id to use with the resources
-  # in this class, but I don't care what it is.
-  # 
-  # The inputs, $path and $jq, are not safe to use as a resource id in mgmt
-  # because some mgmt resources reject names that have a slash (/) in them
-  # (the 'value' resource does such rejection)
+	# I want a unique resource id to use with the resources
+	# in this class, but I don't care what it is.
+	# 
+	# The inputs, $path and $jq, are not safe to use as a resource id in mgmt
+	# because some mgmt resources reject names that have a slash (/) in them
+	# (the 'value' resource does such rejection)
 	$id = strings.replace_all("parse_json(${path}, ${jq})", "/", "_")
 	#$num = convert.int_to_str(local.pool("parse_json", $id))
 
@@ -35,7 +35,7 @@ class parse($path, $jq) {
 
 		Exec[[$id]].output -> Value[[$id]].any
 
-		value [$id] { }
+		value [$id] {}
 	}
 
 	$v = value.get_str($id)
@@ -47,4 +47,3 @@ class parse($path, $jq) {
 
 	$trimmed = strings.trim_space($result)
 }
-

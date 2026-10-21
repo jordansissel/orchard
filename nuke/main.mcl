@@ -185,7 +185,7 @@ class nukem($mac, $http_server) {
 	$nuke = value.get_str($name)->value == "yes"
 
 	$nbp = if $nuke {
-			"tftp://192.168.12.86/shim.efi"
+		"tftp://192.168.12.86/shim.efi"
 	} else {
 		# Serving a nonexistant file as NBP allows netbooting to proceed faster
 		# Otherwise, PXE boot will hang for a long time.
@@ -346,7 +346,6 @@ class with_kexec {
 		Depend => Exec["kexec load"],
 	}
 }
-
 
 class maybe {
 	#for $i, $keytype in $keytypes {

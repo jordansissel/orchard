@@ -23,6 +23,7 @@ $rose struct{package struct{desktop map{str: str}; gdm str; ssh str}; service st
 				"gnome" => "gnome-desktop4",
 				"kde" => "plasma-desktop",
 				"cosmic" => "cosmic-session",
+				"niri" => "niri",
 			},
 			gdm => "gdm",
 			ssh => "openssh-server",

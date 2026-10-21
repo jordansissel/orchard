@@ -65,18 +65,18 @@ class base {
 
 			# XXX: This guard 
 			#if os.file_exists("${home}.ssh/") {
-				file $known_hosts {
-					owner => "jls",
-					state => "exists",
-					#Depend => File["${home}.ssh/"],
-				}
+			file $known_hosts {
+				owner => "jls",
+				state => "exists",
+				#Depend => File["${home}.ssh/"],
+			}
 
-				line "ssh-ca in ~jls/.ssh/known_hosts" {
-					file => $known_hosts,
-					content => "@cert-authority * " + $ssh_ca->value,
-					state => "exists",
-					Depend => File[$known_hosts],
-				}
+			line "ssh-ca in ~jls/.ssh/known_hosts" {
+				file => $known_hosts,
+				content => "@cert-authority * " + $ssh_ca->value,
+				state => "exists",
+				Depend => File[$known_hosts],
+			}
 			#}
 		}
 	}
