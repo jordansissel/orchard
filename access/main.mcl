@@ -13,9 +13,14 @@ import "../pkg/"
 $is_macos = os.file_exists("/Applications")
 
 class base {
+	group "wheel" {
+		state => "exists",
+	}
+
 	user "jls" {
 		state => "exists",
 		groups => ["wheel", "video"],
+		Depend => Group["wheel"],
 	}
 
 	#user "dev" {
