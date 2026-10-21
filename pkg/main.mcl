@@ -1,29 +1,53 @@
+import "os"
+
+$distro = os.release()
 
 class completion {
 	noop "complete" {}
 }
 
+$lolnaming = {
+	"debian" => {
+		"avahi" => "avahi-utils",
+		"lm_sensors" => "lm-sensors",
+		"nss-mdns" => "libnss-mdns",
+	},
+}
+
 class install($packages []str) {
 	include completion
 
-	pkg $packages {
-		# On Ubuntu (and maybe elsewhere), Packagekit marks certain packages as "unsupported" ?
-		# Ubuntu's qemu-guest-agent, kde-plasma-desktop, etc, all will be  "not found" by mgmt
-		# if the allowunsupported is the default (false) value.
-		# This seems to correlate with Ubuntu package 'Section' fields prefixed with 'universe/'
-		allowunsupported => true,
+	for $i, $pkg in $packages {
+		$name = $lolnaming[$distro->id][$pkg] <|> $pkg
 
-		state => "installed",
+		pkg [$name] {
+			# On Ubuntu (and maybe elsewhere), Packagekit marks certain packages as "unsupported" ?
+			# Ubuntu's qemu-guest-agent, kde-plasma-desktop, etc, all will be  "not found" by mgmt
+			# if the allowunsupported is the default (false) value.
+			# This seems to correlate with Ubuntu package 'Section' fields prefixed with 'universe/'
+			allowunsupported => true,
 
-		Before => Noop["complete"],
+			state => "installed",
 
-		# Sometimes the network is wonky and we should try again.
-		Meta:retry => 5,
-		Meta:delay => 1,
+			Before => Noop["complete"],
+
+			# Sometimes the network is wonky and we should try again.
+			Meta:retry => 5,
+			Meta:delay => 1,
+		}
 	}
 }
 
 class version($package, $version) {
+	$distro = os.release()
+
+	#$colloquial_name = if $distro->id == "debian" and $package == "kernel-modules" {
+	#"linux-modules"
+	#} else {
+	#$package
+	#}
+
+	#pkg [$colloquial_name] {
 	pkg [$package] {
 		# On Ubuntu (and maybe elsewhere), Packagekit marks certain packages as "unsupported" ?
 		# Ubuntu's qemu-guest-agent, kde-plasma-desktop, etc, all will be  "not found" by mgmt

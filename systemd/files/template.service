@@ -14,6 +14,7 @@ Type=simple
 User={{ .User }}
 Group={{ .Group }}
 EnvironmentFile=-/etc/sysconfig/{{ .Name }}
+EnvironmentFile=-/etc/default/{{ .Name }}
 ExecStart={{ .Run }}
 Restart=always
 

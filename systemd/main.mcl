@@ -1,5 +1,6 @@
 import "golang"
 import "deploy"
+import "os"
 
 # Placeholder to use as a default empty list that has a specific type.
 $empty_str_list []str = []
@@ -21,7 +22,7 @@ func service($name str, $cmd str, $st) str {
 
 			name => $name,
 
-      # Add safety restrictions to the systemd unit
+			# Add safety restrictions to the systemd unit
 			safe => $st->safe <|> true,
 		},
 	)
@@ -45,7 +46,7 @@ class service($name, $st) {
 
 		name => $name,
 
-    # Add safety restrictions to the systemd unit
+		# Add safety restrictions to the systemd unit
 		safe => $st->safe <|> true,
 	}
 
@@ -68,7 +69,13 @@ class service($name, $st) {
 {{- end }}
 ", $env)
 
-	file "/etc/sysconfig/${name}" {
+	$sysconfig = if os.file_exists("/etc/sysconfig/") {
+		"/etc/sysconfig/${name}"
+	} else {
+		"/etc/default/${name}"
+	}
+
+	file $sysconfig {
 		content => $envfile,
 		state => "exists",
 		Notify => Svc[$name],

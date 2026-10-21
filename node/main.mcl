@@ -16,6 +16,7 @@ import "../hotdesk/"
 import "../pkg/"
 
 $seed_host = "mgmt.local"
+$distro = os.release()
 
 # Identify 'model name' line in /proc/cpuinfo
 $is_model_name = func($line) { strings.has_prefix($line, "model name") }
@@ -108,10 +109,9 @@ class register {
 		#value => os.system("grep MemTotal /proc/meminfo | sed -re 's/^[^:]+:\\s*//'"),
 	}
 
-	# os.release() reports on the os/distro/version
 	kv "os" {
 		mapped => true,
-		value => golang.template("{{ .Id }} {{ .Variant_id }} {{ .Version_id }}", os.release()),
+		value => golang.template("{{ .Id }} {{ .Variant_id }} {{ .Version_id }}", $distro),
 	}
 }
 
@@ -123,9 +123,8 @@ class basics {
 	# Because Fedora Cloud image doesn't ship this by default
 	# and it includes the i915 video driver.
 	# Install the kernel-modules package specific to the kernel we're running.
-	$kernel = strings.replace_all(strings.trim_space(os.system("uname -r")), ".x86_64", "")
 
-	include pkg.version("kernel-modules", "${kernel}")
+	include kernel_modules
 
 	if os.file_exists("/usr/bin/dmidecode") {
 		$vendor = strings.trim_space(os.system("dmidecode -s system-manufacturer"))
@@ -140,6 +139,28 @@ class basics {
 			#state => "exists",
 			#}
 		}
+	}
+}
+
+class kernel_modules {
+	if $distro->id == "debian" {
+		# XXX Will this install the correct version?
+		# Note: after kernel 6.19~rc4, Debian changed how they package the kernel,
+		#       but linux-image-<arch> shouldd still work
+		#
+		# > This package depends on the corresponding
+		# > linux-base-abiname[-featureset]-flavour,
+		# > linux-binary-abiname[-featureset]-flavour, and
+		# > linux-modules-abiname[-featureset]-flavour packages. Before version
+		# > 6.19~rc4-1~exp1 it included all of the same files directly.
+		# - https://kernel-team.pages.debian.net/kernel-handbook/ch-packaging.html
+		$debarch = strings.trim_space(os.system("dpkg --print-architecture"))
+		include pkg.install(["linux-image-${debarch}"])
+	}
+
+	if $distro->id == "fedora" {
+		$kernel = strings.replace_all(strings.trim_space(os.system("uname -r")), ".x86_64", "")
+		include pkg.version("kernel-modules", "${kernel}")
 	}
 }
 
