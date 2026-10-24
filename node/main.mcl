@@ -159,7 +159,7 @@ class kernel_modules {
 	}
 
 	if $distro->id == "fedora" {
-		$kernel = strings.replace_all(strings.trim_space(os.system("uname -r")), ".x86_64", "")
+		$kernel = strings.replace_all(strings.replace_all(strings.trim_space(os.system("uname -r")), ".x86_64", ""), ".aarch64", "")
 		include pkg.version("kernel-modules", "${kernel}")
 	}
 }
