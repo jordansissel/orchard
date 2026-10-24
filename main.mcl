@@ -29,7 +29,6 @@ if $hostname == "coffee.local" or $hostname == "eclair.local" {
 	include node.mgmt
 	include node.purpose
 	include nuke.maybe
-	include hotdesk.base
 
 	$h = value.get_str("hostname")
 	if $h->ready {

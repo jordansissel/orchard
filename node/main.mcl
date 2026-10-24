@@ -263,9 +263,10 @@ class purpose {
 	if os.file_exists($fw_cfg_path) {
 		$kind str = os.readfile("${fw_cfg_path}/variant/raw") <|> "default"
 
-		include hotdesk.base
 		if $kind != "default" {
 			include hotdesk.desktop($kind)
+		} else {
+			include hotdesk.base
 		}
 	}
 
