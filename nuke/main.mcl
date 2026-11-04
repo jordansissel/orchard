@@ -143,6 +143,7 @@ class service($http_server) {
 	include nukem("48:9e:bd:4d:01:90", $http_server)
 	include nukem("5c:60:ba:d9:16:25", $http_server)
 	include nukem("c8:5a:cf:ba:7a:de", $http_server)
+	include nukem("6c:02:e0:78:71:bc", $http_server)
 
 	include cache.contents($http_server, "/installer/debian-preseed.txt", deploy.readfile("/files/debian-preseed.txt"))
 
@@ -354,6 +355,18 @@ class maybe {
 		if $kv->exists and $kv->value == "yes" {
 			# Initiate launch sequence ;P
 			include site
+		}
+	}
+}
+
+class clear {
+	#for $i, $keytype in $keytypes {
+	for $i, $mac in net.macs() {
+		$key = "nuke/${mac}"
+
+		# Delete the value
+		kv [$key] {
+			mapped => true,
 		}
 	}
 }
