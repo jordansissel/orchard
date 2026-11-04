@@ -38,7 +38,7 @@ class parse($path, $jq) {
 		value [$id] {}
 	} else {
 		# Empty value
-		value [$id] { 
+		value [$id] {
 			any => "",
 		}
 	}

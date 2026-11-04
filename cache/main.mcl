@@ -61,7 +61,6 @@ class caching_proxy($address) {
 			sub => $sub,
 		}
 
-
 		for $i, $freshpath in $params->freshen <|> [] {
 			http:client "${path}${freshpath}" {
 				url => "${backend}${freshpath}",
@@ -69,8 +68,8 @@ class caching_proxy($address) {
 				mtime_check => true,
 
 				Meta:retry => 5,
-				Meta:delay => 10*1000,
-				Meta:poll => 60*60*1000,
+				Meta:delay => 10 * 1000,
+				Meta:poll => 60 * 60 * 1000,
 			}
 		}
 	}
@@ -97,7 +96,7 @@ class caching_proxy($address) {
 	include proxy(struct{
 		path => "/fedora/",
 		backend => "https://mirror.cs.odu.edu/",
-		freshen => iter.flatten(iter.map(iter.range(40,44), func($version) {
+		freshen => iter.flatten(iter.map(iter.range(40, 44), func($version) {
 			[
 				fmt.printf("fedora/linux/releases/%d/Everything/x86_64/os/repodata/repomd.xml", $version),
 				fmt.printf("fedora/linux/updates/%d/Everything/x86_64/repodata/repomd.xml", $version),
