@@ -36,6 +36,11 @@ class parse($path, $jq) {
 		Exec[[$id]].output -> Value[[$id]].any
 
 		value [$id] {}
+	} else {
+		# Empty value
+		value [$id] { 
+			any => "",
+		}
 	}
 
 	$v = value.get_str($id)
