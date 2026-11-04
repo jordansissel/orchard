@@ -15,7 +15,7 @@ fi
 echo "Disk: $disk" > /PRE_PIVOT
 
 url=http://192.168.12.86:29145/fedora/linux/releases/44/Cloud/x86_64/images/Fedora-Cloud-Base-AmazonEC2-44-1.7.x86_64.raw.xz
-curl "$url" | xz -dc > "/dev/${disk}"
+curl --retry 10 -q "$url" | xz -dc > "/dev/${disk}"
 
 # fedora cloud images use partition 3 for the main filessystem
 mkdir /mnt
