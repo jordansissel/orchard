@@ -5,6 +5,7 @@
 
 import "deploy"
 import "fmt"
+import "iter"
 import "golang"
 import "local"
 import "os"
@@ -349,24 +350,88 @@ class with_kexec {
 }
 
 class maybe {
-	#for $i, $keytype in $keytypes {
-	for $i, $mac in net.macs() {
-		$kv = world.getval("nuke/${mac}")
-		if $kv->exists and $kv->value == "yes" {
-			# Initiate launch sequence ;P
-			include site
+	include cloud_init as ci
+
+	if $ci.ready {
+		if $ci.running {
+			include clear
+		} else {
+			#print "nuke[ACTIVE]" {
+			#msg => "ci is NOT running???",
+			#Before => Noop["complete"],
+			#Meta:autogroup => false,
+			#}
+			for $i, $mac in net.macs() {
+				$kv = world.getval("nuke/${mac}")
+				if $kv->exists and $kv->value == "yes" {
+					# Initiate launch sequence ;P
+					include site
+				}
+			}
 		}
 	}
 }
 
 class clear {
-	#for $i, $keytype in $keytypes {
+	# When running under cloud-init, I want mgmt to exit 
+	# and allow cloud-init to complete.
+	#
+	# And if there's any nuke entries for this machine, we should clear them.
+
+	exit "completing cloud-init" {
+		Depend => Noop["complete"],
+	}
+
 	for $i, $mac in net.macs() {
 		$key = "nuke/${mac}"
 
-		# Delete the value
+		#print "nuke clear[${mac}]" {
+		#msg => "clearing key: ${key}",
+		#Before => Kv[$key],
+		#Meta:autogroup => false,
+		#}
+
 		kv [$key] {
-			mapped => true,
+			mapped => false,
+			Before => Exit["completing cloud-init"],
+			Depend => Noop["complete"],
 		}
 	}
+}
+
+class cloud_init {
+	# exec's mtimes param will error or print warnings for files that do not exist.
+	# So, given a list of candidate files, only include those that exist.
+	$files = iter.filter(["/run/cloud-init/status.json", "/run/cloud-init/disabled", "/run/cloud-init/enabled", "/var/lib/cloud/data/status.json"], func($path) { os.file_exists($path) })
+
+	#print "cloud-init status files" {
+	#msg => fmt.printf("%v", $files),
+	#Meta:autogroup => false,
+	#Before => Exec["cloud-init status"],
+	#}
+
+	exec "cloud-init status" {
+		cmd => "cloud-init",
+		args => ["status"],
+		mtimes => $files,
+	}
+
+	value "cloud-init status" {}
+
+	#Exec["cloud-init status"].output -> Print["cloud-init status"].msg
+	Exec["cloud-init status"].output -> Value["cloud-init status"].any
+
+	$cloud_init = value.get_str("cloud-init status")
+
+	$ready = $cloud_init->ready
+	$running = strings.trim_space($cloud_init->value) == "status: running"
+
+	#$status str = $cloud_init->value
+
+	#print "cloud-init status" {
+	#msg => fmt.printf("Running: %v (%v)", $running, $status),
+	#Meta:autogroup => false,
+	#Before => Noop["complete"],
+	#Depend => Exec["cloud-init status"],
+	#}
 }
