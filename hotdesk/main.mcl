@@ -9,6 +9,7 @@ import "golang/strings" as golang_strings
 import "world"
 import "convert"
 
+import "../nuke/"
 import "../pkg/"
 import "../json/"
 
@@ -158,16 +159,30 @@ class base {
 
 	include json.parse("/run/cloud-init/status.json", ".v1.stage // \"none\"") as cloudstatus
 
-	print "cloud-init status" {
-		msg => $cloudstatus.trimmed,
-		Meta:autogroup => false,
-	}
+	if os.file_exists("/run/cloud-init/") {
+		print "cloud-init status" {
+			msg => $cloudstatus.trimmed,
+			Meta:autogroup => false,
+			Before => Noop["complete"],
+		}
 
-	if $cloudstatus.trimmed == "modules-final" {
-		# When running under cloud-init, I want mgmt to exit and allow cloud-init
-		# to complete.
-		exit "completing cloud-init" {
-			Depend => Noop["complete"],
+		if $cloudstatus.trimmed in ["none", ""] {
+
+			print "cloud-init status again" {
+				msg => "is none or empty!",
+				Meta:autogroup => false,
+				Before => Noop["complete"],
+			}
+			include nuke.maybe
+		} else {
+			if $cloudstatus.trimmed == "modules-final" {
+				include nuke.clear
+				# When running under cloud-init, I want mgmt to exit and allow cloud-init
+				# to complete.
+				exit "completing cloud-init" {
+					Depend => Noop["complete"],
+				}
+			}
 		}
 	}
 }
