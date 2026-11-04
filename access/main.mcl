@@ -42,7 +42,7 @@ class base {
 		}
 
 		# XXX: This file_exists works around a bug where ssh:authorized_key tries to watch the directory before it may exist.
-		if os.file_exists("${home}") {
+		if os.file_exists("${home}") and os.file_exists("${home}.ssh") {
 			ssh:authorized_key "workstation" {
 				user => "jls",
 				state => "exists",
