@@ -356,11 +356,6 @@ class maybe {
 		if $ci.running {
 			include clear
 		} else {
-			#print "nuke[ACTIVE]" {
-			#msg => "ci is NOT running???",
-			#Before => Noop["complete"],
-			#Meta:autogroup => false,
-			#}
 			for $i, $mac in net.macs() {
 				$kv = world.getval("nuke/${mac}")
 				if $kv->exists and $kv->value == "yes" {
@@ -385,12 +380,6 @@ class clear {
 	for $i, $mac in net.macs() {
 		$key = "nuke/${mac}"
 
-		#print "nuke clear[${mac}]" {
-		#msg => "clearing key: ${key}",
-		#Before => Kv[$key],
-		#Meta:autogroup => false,
-		#}
-
 		kv [$key] {
 			mapped => false,
 			Before => Exit["completing cloud-init"],
@@ -402,13 +391,11 @@ class clear {
 class cloud_init {
 	# exec's mtimes param will error or print warnings for files that do not exist.
 	# So, given a list of candidate files, only include those that exist.
+	# Under cloud-init, the 'enabled' and 'disabled' files don't always exist.
+	# Further, /run/cloud-init/status.json is a symlink to /var/lib/cloud/data/status.json (at least on Fedora)
+	# and I don't know if I can rely on one existing. I also don't yet know if
+	# mgmt's mtimes checks the mtime of the symlink or the target file.
 	$files = iter.filter(["/run/cloud-init/status.json", "/run/cloud-init/disabled", "/run/cloud-init/enabled", "/var/lib/cloud/data/status.json"], func($path) { os.file_exists($path) })
-
-	#print "cloud-init status files" {
-	#msg => fmt.printf("%v", $files),
-	#Meta:autogroup => false,
-	#Before => Exec["cloud-init status"],
-	#}
 
 	exec "cloud-init status" {
 		cmd => "cloud-init",
@@ -418,20 +405,14 @@ class cloud_init {
 
 	value "cloud-init status" {}
 
-	#Exec["cloud-init status"].output -> Print["cloud-init status"].msg
 	Exec["cloud-init status"].output -> Value["cloud-init status"].any
 
 	$cloud_init = value.get_str("cloud-init status")
 
+	# External interface:
+	# $ready is true if we have a status to report
 	$ready = $cloud_init->ready
+
+	# $running is true if cloud-init is currently running.
 	$running = strings.trim_space($cloud_init->value) == "status: running"
-
-	#$status str = $cloud_init->value
-
-	#print "cloud-init status" {
-	#msg => fmt.printf("Running: %v (%v)", $running, $status),
-	#Meta:autogroup => false,
-	#Before => Noop["complete"],
-	#Depend => Exec["cloud-init status"],
-	#}
 }
