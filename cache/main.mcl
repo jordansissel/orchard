@@ -3,6 +3,7 @@ import "sys"
 import "golang/os" as g_os
 import "strings"
 import "os"
+import "iter"
 import "deploy"
 import "convert"
 import "local"
@@ -59,6 +60,19 @@ class caching_proxy($address) {
 			head => $backend,
 			sub => $sub,
 		}
+
+
+		for $i, $freshpath in $params->freshen <|> [] {
+			http:client "${path}${freshpath}" {
+				url => "${backend}${freshpath}",
+
+				mtime_check => true,
+
+				Meta:retry => 5,
+				Meta:delay => 10*1000,
+				Meta:poll => 60*60*1000,
+			}
+		}
 	}
 
 	if $is_macos {
@@ -80,7 +94,17 @@ class caching_proxy($address) {
 	}
 
 	# The odu.edu mirror had an empty repodata directory as of 2026-08-13... Use another for now.
-	include proxy(struct{path => "/fedora/", backend => "https://mirror.cs.odu.edu/"})
+	include proxy(struct{
+		path => "/fedora/",
+		backend => "https://mirror.cs.odu.edu/",
+		freshen => iter.flatten(iter.map(iter.range(40,44), func($version) {
+			[
+				fmt.printf("fedora/linux/releases/%d/Everything/x86_64/os/repodata/repomd.xml", $version),
+				fmt.printf("fedora/linux/updates/%d/Everything/x86_64/repodata/repomd.xml", $version),
+			]
+		})),
+	})
+
 	#include proxy(struct{path => "/fedora/", backend => "https://mirror-mci.yuki.net.uk/"})
 	#include proxy(struct{path => "/fedora/", backend => "https://mirror.pilotfiber.com/"})
 
