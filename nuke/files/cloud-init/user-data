@@ -6,16 +6,6 @@
     "chmod 755 /usr/bin/mgmt",
     "sed -i -e '/^metalink=/d; s@^#baseurl=http://download.example/pub/fedora/@baseurl=http://192.168.12.86:29145/fedora/@' /etc/yum.repos.d/fedora{,-updates}.repo"
   ],
-  "chpasswd": {
-    "expire": false,
-    "users": [
-      {
-        "name": "dev",
-        "password": "dev",
-        "type": "text"
-      }
-    ]
-  },
   "packages": [
     "PackageKit",
     "polkit",
