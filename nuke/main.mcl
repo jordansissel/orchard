@@ -177,14 +177,27 @@ class nukem($mac, $http_server) {
 		any => "no",
 	}
 
-	kv "nuke/${mac}" {
-		mapped => false,
-	}
 
 	Http:Server:Flag[$flag].value -> Value[$name].any
-	Http:Server:Flag[$flag].value -> Kv["nuke/${mac}"].value
 
 	$nuke = value.get_str($name)->value == "yes"
+
+	#Http:Server:Flag[$flag].value -> Kv["nuke/${mac}"].value
+	#if $nuke {
+		#kv "nuke/${mac}" {
+			#mapped => false,
+			#value => "yes",
+		#}
+	#} else {
+		#kv "nuke/${mac}" {
+			#mapped => false,
+		#}
+	#}
+
+	kv "nuke/${mac}" {
+		mapped => false,
+		value => $nuke ?: "yes",
+	}
 
 	$nbp = if $nuke {
 		"tftp://192.168.12.86/shim.efi"
@@ -372,18 +385,36 @@ class clear {
 	# and allow cloud-init to complete.
 	#
 	# And if there's any nuke entries for this machine, we should clear them.
+	$nexus = world.schedule("nexus")
 
-	exit "completing cloud-init" {
-		Depend => Noop["complete"],
-	}
+  print "nuke: nexus list" {
+    msg => fmt.printf("Nexus: %v", $nexus),
+    Meta:autogroup => false,
+  }
 
-	for $i, $mac in net.macs() {
-		$key = "nuke/${mac}"
+	if len($nexus) > 0 {
+    exit "completing cloud-init" {
+      Depend => Noop["complete"],
+    }
 
-		kv [$key] {
-			mapped => false,
-			Before => Exit["completing cloud-init"],
-			Depend => Noop["complete"],
+		for $i, $mac in net.macs() {
+			$key = "nuke/${mac}"
+
+			#kv [$key] {
+				#mapped => false,
+				#Before => Exit["completing cloud-init"],
+				#Depend => Noop["complete"],
+			#}
+
+			# We have to use curl/http to clear the nuke flag because
+			# the flag is controlled by a http:server:flag
+
+			exec "clear nuke flag" {
+				cmd => "curl",
+				#args => [ "-s", "-X", "POST", "-d", "nuke=no", "http://" + $nexus[0] + ":29145/nuke/${mac}" ],
+				args => [ "-s", "-X", "POST", "-d", "nuke=no", "http://" + "192.168.12.86" + ":29145/nuke/${mac}" ],
+				Before => Exit["completing cloud-init"],
+			}
 		}
 	}
 }
