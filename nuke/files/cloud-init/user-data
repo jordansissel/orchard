@@ -8,7 +8,7 @@
   ],
   "packages": [
     "PackageKit",
-    "polkit",
+    "polkit"
   ],
   "power_state": {
     "condition": true,
@@ -17,6 +17,6 @@
   },
   "runcmd": [
     "mgmt --version",
-    "mgmt run empty --no-autoedges --seeds http://192.168.12.86:2379 2>&1"
+    "systemd-run -u mgmt --system --wait --property 'StandardOutput=journal+console' mgmt run empty --no-autoedges --seeds http://192.168.12.86:2379"
   ]
 }
