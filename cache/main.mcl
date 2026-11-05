@@ -7,7 +7,6 @@ import "iter"
 import "deploy"
 import "convert"
 import "local"
-import "golang"
 
 import "../systemd/"
 
@@ -62,14 +61,20 @@ class caching_proxy($address) {
 		}
 
 		for $i, $freshpath in $params->freshen <|> [] {
-			http:client "${path}${freshpath}" {
-				url => "${backend}${freshpath}",
+			# Only track updates for paths that have already been fetched... is that weird wording?
+			#
+			# the 'freshpath' won't exist unless http:server:proxy has been used to cache the file
+			# so, http:client should only be configured to freshen it if the file exists.
+			if os.file_exists("${path}${freshpath}") {
+				http:client "${path}${freshpath}" {
+					url => "${backend}${freshpath}",
 
-				mtime_check => true,
+					mtime_check => true,
 
-				Meta:retry => 5,
-				Meta:delay => 10 * 1000,
-				Meta:poll => 60 * 60 * 1000,
+					Meta:retry => 5,
+					Meta:delay => 10 * 1000,
+					Meta:poll => 60 * 60 * 1000,
+				}
 			}
 		}
 	}
